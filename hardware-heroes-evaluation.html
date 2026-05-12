@@ -973,7 +973,7 @@ function buildTest(containerId, prefix, showFeedback) {
       <h3>${q.text}</h3>
       <div class="options" id="${prefix}_opts_${i}">
         ${q.options.map((opt, j) => `
-          <button class="option" onclick="selectAnswer('${prefix}', ${i}, ${j}, ${showFeedback})">
+          <button class="option" onclick="selectAnswer('${prefix}', ${i}, ${j}, ${showFeedback})" style="color:#e8e8f0;">
             <div class="dot"></div>${opt}
           </button>
         `).join('')}
