@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hardware Heroes – Evaluation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a28;
+    --border: #2a2a42;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --accent3: #43e97b;
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --card: #16162a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 48px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+
+  .header .chip {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 4px 14px;
+    border-radius: 2px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  .header h1 {
+    font-size: clamp(28px, 6vw, 44px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--text) 40%, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+
+  .header p {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  /* Phase indicator */
+  .phase-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 32px;
+  }
+
+  .phase-step {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    transition: background 0.4s;
+  }
+  .phase-step.done { background: var(--accent3); }
+  .phase-step.active { background: var(--accent); }
+
+  .phase-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .phase-label span { color: var(--accent); }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--accent); }
+
+  .card .q-number {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 18px;
+    color: var(--text);
+  }
+
+  /* Multiple choice */
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 14px;
+    text-align: left;
+  }
+  .option:hover { border-color: var(--accent); background: var(--surface2); }
+  .option.selected { border-color: var(--accent); background: rgba(108,99,255,0.12); }
+  .option.correct { border-color: var(--accent3); background: rgba(67,233,123,0.1); }
+  .option.wrong { border-color: var(--accent2); background: rgba(255,101,132,0.1); }
+
+  .option .dot {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .option.selected .dot { border-color: var(--accent); background: var(--accent); }
+  .option.correct .dot { border-color: var(--accent3); background: var(--accent3); }
+  .option.wrong .dot { border-color: var(--accent2); background: var(--accent2); }
+
+  /* Likert */
+  .likert {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .likert-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .likert-btn {
+    flex: 1;
+    min-width: 44px;
+    padding: 10px 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .likert-btn:hover { border-color: var(--accent); }
+  .likert-btn.selected { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* Textarea */
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    padding: 12px 16px;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: var(--accent); }
+
+  /* Text input */
+  input[type=text], input[type=number] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus { border-color: var(--accent); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: #7c74ff; transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+  .btn-success {
+    background: var(--accent3);
+    color: #000;
+  }
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+
+  /* Section headings */
+  .section-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+  .section-desc {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+
+  /* Result / score box */
+  .score-box {
+    text-align: center;
+    padding: 40px;
+    border: 1px solid var(--accent);
+    border-radius: 16px;
+    background: rgba(108,99,255,0.07);
+    margin-bottom: 28px;
+  }
+  .score-box .big-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 72px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .score-box .score-label {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 8px;
+  }
+
+  /* Comparison */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .compare-card {
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .compare-card .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-family: 'Space Mono', monospace; text-transform: uppercase; letter-spacing: 1px; }
+  .compare-card .value { font-size: 40px; font-weight: 800; font-family: 'Space Mono', monospace; }
+  .compare-card.pre { border-color: var(--accent2); }
+  .compare-card.pre .value { color: var(--accent2); }
+  .compare-card.post { border-color: var(--accent3); }
+  .compare-card.post .value { color: var(--accent3); }
+
+  .delta-badge {
+    text-align: center;
+    margin-bottom: 28px;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .delta-badge .delta {
+    font-family: 'Space Mono', monospace;
+    font-size: 28px;
+    color: var(--accent3);
+  }
+
+  /* Feedback bar */
+  .feedback-box {
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-top: 12px;
+    line-height: 1.6;
+    border-left: 3px solid;
+    display: none;
+  }
+  .feedback-box.show { display: block; }
+  .feedback-box.correct { border-color: var(--accent3); background: rgba(67,233,123,0.07); color: var(--accent3); }
+  .feedback-box.wrong { border-color: var(--accent2); background: rgba(255,101,132,0.07); color: #ff9aaa; }
+
+  /* Progress info */
+  .progress-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .progress-bar-wrap {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  /* Hidden / shown screens */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* Welcome screen */
+  .welcome-hero {
+    font-size: 80px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 24px 0 32px;
+  }
+  .info-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .info-item .icon { font-size: 20px; }
+  .info-item .info-text { font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .info-item .info-text strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+  /* Name input screen */
+  .name-screen {
+    max-width: 440px;
+    margin: 0 auto;
+  }
+  .name-screen label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Final download area */
+  .download-area {
+    border: 2px dashed var(--accent);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    background: rgba(108,99,255,0.04);
+    margin-top: 24px;
+  }
+  .download-area h3 { font-size: 18px; margin-bottom: 8px; }
+  .download-area p { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+  @media(max-width:500px) {
+    .info-grid, .compare-grid { grid-template-columns: 1fr; }
+    .btn-row { justify-content: center; }
+    .likert { gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ===== WELCOME ===== -->
+  <div class="screen active" id="screen-welcome">
+    <div class="header">
+      <div class="chip">Hardware Heroes</div>
+      <h1>Studie zur Spielevaluation</h1>
+      <p>Wir testen, ob unser Lernspiel euch beim Verstehen von PC-Hardware wirklich hilft.</p>
+    </div>
+
+    <div class="welcome-hero">🖥️</div>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="icon">📋</div>
+        <div class="info-text"><strong>Pre-Test</strong>~5 Min. Wissenstest vor dem Spiel</div>
+      </div>
+      <div class="info-item">
+        <div class="icon">🎮</div>
+        <div class="info-text"><strong>Spielen</strong>Hardware Heroes spielen (~15 Min.)</div>
+      </div>
+      <div class="info-item">
+        <div class="icon">📊</div>
+        <div class="info-text"><strong>Post-Test</strong>Gleicher Test nochmal nach dem Spiel</div>
+      </div>
+      <div class="info-item">
+        <div class="icon">💬</div>
+        <div class="info-text"><strong>Fragebogen</strong>Kurzes Feedback zum Spielerlebnis</div>
+      </div>
+    </div>
+
+    <p style="font-size:13px; color:var(--muted); text-align:center; margin-bottom:28px;">
+      Alle Daten sind anonym und werden nur für die Seminarauswertung der DHBW Stuttgart genutzt.
+    </p>
+
+    <div class="btn-row" style="justify-content:center">
+      <button class="btn btn-primary" onclick="goScreen('screen-name')">Los geht's →</button>
+    </div>
+  </div>
+
+  <!-- ===== NAME INPUT ===== -->
+  <div class="screen" id="screen-name">
+    <div class="header">
+      <div class="chip">Schritt 1 von 4</div>
+      <h1>Deine Daten</h1>
+      <p>Damit wir Pre- und Post-Test zuordnen können, brauchen wir ein Kürzel von dir.</p>
+    </div>
+
+    <div class="name-screen">
+      <div class="card">
+        <div class="q-number">Identifikation</div>
+        <h3>Erstelle ein anonymes Kürzel</h3>
+        <p style="color:var(--muted); font-size:13px; margin-bottom:16px; line-height:1.6">
+          Benutze z.B. die ersten 2 Buchstaben deines Vornamens + Geburtsmonat (z.B. "LU03"). Dieses Kürzel gibst du auch im Post-Test ein.
+        </p>
+        <label>Dein Kürzel</label>
+        <input type="text" id="userCode" placeholder="z.B. LU03" maxlength="8" style="margin-bottom:16px">
+        <label style="margin-top:4px">Semester / Kohorte</label>
+        <input type="text" id="userGroup" placeholder="z.B. WWI2025A" maxlength="20">
+      </div>
+
+      <div class="card">
+        <div class="q-number">Vorwissen</div>
+        <h3>Wie gut kennst du dich mit PC-Hardware aus?</h3>
+        <div class="likert-labels"><span>Gar nicht</span><span>Sehr gut</span></div>
+        <div class="likert" id="priorKnowledge">
+          <button class="likert-btn" onclick="selectLikert('priorKnowledge', 1)">1</button>
+          <button class="likert-btn" onclick="selectLikert('priorKnowledge', 2)">2</button>
+          <button class="likert-btn" onclick="selectLikert('priorKnowledge', 3)">3</button>
+          <button class="likert-btn" onclick="selectLikert('priorKnowledge', 4)">4</button>
+          <button class="likert-btn" onclick="selectLikert('priorKnowledge', 5)">5</button>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goScreen('screen-welcome')">← Zurück</button>
+        <button class="btn btn-primary" onclick="startPreTest()">Pre-Test starten →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PRE-TEST ===== -->
+  <div class="screen" id="screen-pretest">
+    <div class="header">
+      <div class="chip">Pre-Test</div>
+      <h1>Wissenstest</h1>
+      <p>Beantworte die Fragen so gut du kannst — auch wenn du dir nicht sicher bist, einfach schätzen!</p>
+    </div>
+
+    <div class="phase-label"><span>Fortschritt</span> Pre-Test</div>
+    <div class="progress-info">
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="preProgress" style="width:0%"></div></div>
+      <span id="preProgressText">0 / 8</span>
+    </div>
+
+    <div id="pretest-questions"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="submitPreTest()">Pre-Test abschicken →</button>
+    </div>
+  </div>
+
+  <!-- ===== PLAY BRIDGE ===== -->
+  <div class="screen" id="screen-play">
+    <div class="header">
+      <div class="chip">Schritt 3 von 4</div>
+      <h1>Jetzt spielen! 🎮</h1>
+      <p>Super! Pre-Test abgeschlossen. Jetzt Hardware Heroes spielen — am besten alle Level.</p>
+    </div>
+
+    <div class="card" style="text-align:center; padding: 48px 28px;">
+      <div style="font-size:64px; margin-bottom:20px">🕹️</div>
+      <h2 style="font-size:22px; margin-bottom:12px">Hardware Heroes öffnen</h2>
+      <p style="color:var(--muted); font-size:14px; margin-bottom:28px; line-height:1.6">
+        Spiele alle 4 Level. Danach kommst du zurück hierher für den Post-Test.<br>
+        <strong style="color:var(--text)">Lass diesen Tab offen!</strong>
+      </p>
+      <a href="https://luisgetlost.me" target="_blank" class="btn btn-primary" style="display:inline-flex; text-decoration:none; margin-bottom:12px; font-size:16px; padding:16px 36px">
+        🎮 Hardware Heroes spielen
+      </a>
+      <p style="font-size:12px; color:var(--muted); margin-top:8px">luisgetlost.me</p>
+    </div>
+
+    <div style="text-align:center; margin-top:8px">
+      <button class="btn btn-secondary" onclick="goScreen('screen-posttest'); buildPostTest()">
+        Fertig gespielt → Post-Test starten
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== POST-TEST ===== -->
+  <div class="screen" id="screen-posttest">
+    <div class="header">
+      <div class="chip">Post-Test</div>
+      <h1>Wissenstest (nach dem Spiel)</h1>
+      <p>Die gleichen Fragen wie vorhin — mal sehen, was sich verändert hat!</p>
+    </div>
+
+    <div class="phase-label"><span>Fortschritt</span> Post-Test</div>
+    <div class="progress-info">
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="postProgress" style="width:0%"></div></div>
+      <span id="postProgressText">0 / 8</span>
+    </div>
+
+    <div id="posttest-questions"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="submitPostTest()">Post-Test abschicken →</button>
+    </div>
+  </div>
+
+  <!-- ===== FRAGEBOGEN ===== -->
+  <div class="screen" id="screen-fragebogen">
+    <div class="header">
+      <div class="chip">Fragebogen</div>
+      <h1>Dein Feedback 💬</h1>
+      <p>Kurze Fragen zum Spielerlebnis — kein Richtig oder Falsch, es geht um deine Einschätzung.</p>
+    </div>
+
+    <!-- Block A: Spaß & Motivation -->
+    <div class="section-title">A — Spaß & Motivation</div>
+    <div class="section-desc">Wie war das Spielerlebnis für dich?</div>
+
+    <div class="card" id="fq1">
+      <div class="q-number">Frage 1 / 10</div>
+      <h3>Das Spielen hat mir Spaß gemacht.</h3>
+      <div class="likert-labels"><span>Stimme gar nicht zu</span><span>Stimme voll zu</span></div>
+      <div class="likert">
+        <button class="likert-btn" onclick="selectLikert('fq1', 1)">1</button>
+        <button class="likert-btn" onclick="selectLikert('fq1', 2)">2</button>
+        <button class="likert-btn" onclick="selectLikert('fq1', 3)">3</button>
+        <button class="likert-btn" onclick="selectLikert('fq1', 4)">4</button>
+        <button class="likert-btn" onclick="selectLikert('fq1', 5)">5</button>
+      </div>
+    </div>
+
+    <div class="card" id="fq2">
+      <div class="q-number">Frage 2 / 10</div>
+      <h3>Ich war während des Spiels motiviert weiterzumachen.</h3>
+      <div class="likert-labels"><span>Stimme gar nicht zu</span><span>Stimme voll zu</span></div>
+      <div class="likert">
+        <button class="likert-btn" onclick="selectLikert('fq2', 1)">1</button>
+        <button class="likert-btn" onclick="selectLikert('fq2', 2)">2</button>
+        <button class="likert-btn" onclick="selectLikert('fq2', 3)">3</button>
+        <button class="likert-btn" onclick="selectLikert('fq2', 4)">4</button>
+        <button class="likert-btn" onclick="selectLikert('fq2', 5)">5</button>
+      </div>
+    </div>
+
+    <div class="card" id="fq3">
+      <div class="q-number">Frage 3 / 10</div>
+      <h3>Das Spiel hat mich neugierig auf das Thema PC-Hardware gemacht.</h3>
+      <div class="likert-labels"><span>Stimme gar nicht zu</span><span>Stimme voll zu</span></div>
+      <div class="likert">
+        <button class="likert-btn" onclick="selectLikert('fq3', 1)">1</button>
+        <button class="likert-btn" onclick="selectLikert('fq3', 2)">2</button>
+        <button class="likert-btn" onclick="selectLikert('fq3', 3)">3</button>
+        <button class="likert-btn" onclick="selectLikert('fq3', 4)">4</button>
+        <button class="likert-btn" onclick="selectLikert('fq3', 5)">5</button>
+      </div>
+    </div>
+
+    <!-- Block B: Lerneffekt -->
+    <div class="section-title" style="margin-top:12px">B — Lerneffekt</div>
+    <div class="section-desc">Was hast du beim Spielen wahrgenommen?</div>
+
+    <div class="card" id="fq4">
+      <div class="q-number">Frage 4 / 10</div>
+      <h3>Ich habe das Gefühl, durch das Spiel etwas Neues gelernt zu haben.</h3>
+      <div class="likert-labels"><span>Stimme gar nicht zu</span><span>Stimme voll zu</span></div>
+      <div class="likert">
+        <button class="likert-btn" onclick="selectLikert('fq4', 1)">1</button>
+        <button class="likert-btn" onclick="selectLikert('fq4', 2)">2</button>
+        <button class="likert-btn" onclick="selectLikert('fq4', 3)">3</button>
+        <button class="likert-btn" onclick="selectLikert('fq4', 4)">4</button>
+        <button class="likert-btn" onclick="selectLikert('fq4', 5)">5</button>
+      </div>
+    </div>
+
+    <div class="card" id="fq5">
+      <div class="q-number">Frage 5 / 10</div>
+      <h3>Das Spiel hat mir geholfen, Zusammenhänge zwischen Hardware-Komponenten besser zu verstehen.</h3>
+      <div class="likert-labels"><span>Stimme gar nicht zu</span><span>Stimme voll zu</span></div>
+      <div class="likert">
+        <button class="likert-btn" onclick="selectLikert('fq5', 1)">1</button>
+        <button class="likert-btn" onclick="selectLikert('fq5', 2)">2</button>
+        <button class="likert-btn" onclick="selectLikert('fq5', 3)">3</button>
+        <button class="likert-btn" onclick="selectLikert('fq5', 4)">4</button>
+        <button class="likert-btn" onclick="selectLikert('fq5', 5)">5</button>
+      </div>
+    </div>
+
+    <div class="card" id="fq6">
+      <div class="q-number">Frage 6 / 10</div>
+      <h3>Das Feedback bei falschen Antworten war hilfreich und verständlich.</h3>
+      <div class="likert-labels"><span>Stimme gar nicht zu</span><span>Stimme voll zu</span></div>
+      <div class="likert">
+        <button class="likert-btn" onclick="selectLikert('fq6', 1)">1</button>
+        <button class="likert-btn" onclick="selectLikert('fq6', 2)">2</button>
+        <button class="likert-btn" onclick="selectLikert('fq6', 3)">3</button>
+        <button class="likert-btn" onclick="selectLikert('fq6', 4)">4</button>
+        <button class="likert-btn" onclick="selectLikert('fq6', 5)">5</button>
+      </div>
+    </div>
+
+    <!-- Block C: Design & Usability -->
+    <div class="section-title" style="margin-top:12px">C — Design & Bedienbarkeit</div>
+    <div class="section-desc">Wie war die technische Seite des Spiels?</div>
+
+    <div class="card" id="fq7">
+      <div class="q-number">Frage 7 / 10</div>
+      <h3>Der Schwierigkeitsgrad des Spiels war angemessen.</h3>
+      <div class="likert-labels"><span>Zu leicht</span><span>Zu schwer</span></div>
+      <div class="likert">
+        <button class="likert-btn" onclick="selectLikert('fq7', 1)">1</button>
+        <button class="likert-btn" onclick="selectLikert('fq7', 2)">2</button>
+        <button class="likert-btn" onclick="selectLikert('fq7', 3)">3</button>
+        <button class="likert-btn" onclick="selectLikert('fq7', 4)">4</button>
+        <button class="likert-btn" onclick="selectLikert('fq7', 5)">5</button>
+      </div>
+    </div>
+
+    <div class="card" id="fq8">
+      <div class="q-number">Frage 8 / 10</div>
+      <h3>Das Spiel war einfach zu bedienen (Steuerung, Navigation).</h3>
+      <div class="likert-labels"><span>Stimme gar nicht zu</span><span>Stimme voll zu</span></div>
+      <div class="likert">
+        <button class="likert-btn" onclick="selectLikert('fq8', 1)">1</button>
+        <button class="likert-btn" onclick="selectLikert('fq8', 2)">2</button>
+        <button class="likert-btn" onclick="selectLikert('fq8', 3)">3</button>
+        <button class="likert-btn" onclick="selectLikert('fq8', 4)">4</button>
+        <button class="likert-btn" onclick="selectLikert('fq8', 5)">5</button>
+      </div>
+    </div>
+
+    <!-- Block D: Offene Fragen -->
+    <div class="section-title" style="margin-top:12px">D — Offene Fragen</div>
+    <div class="section-desc">Deine persönliche Meinung in eigenen Worten.</div>
+
+    <div class="card">
+      <div class="q-number">Frage 9 / 10</div>
+      <h3>Was hat dir am Spiel besonders gut gefallen?</h3>
+      <textarea id="fq9" placeholder="z.B. die Drag & Drop Aufgaben, das Design, ..." rows="3"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="q-number">Frage 10 / 10</div>
+      <h3>Was würdest du am Spiel verbessern oder ergänzen?</h3>
+      <textarea id="fq10" placeholder="z.B. mehr Level, andere Inhalte, ..." rows="3"></textarea>
+    </div>
+
+    <div class="card" id="fqRecommend">
+      <div class="q-number">Bonus</div>
+      <h3>Würdest du das Spiel Kommilitonen weiterempfehlen?</h3>
+      <div class="options">
+        <button class="option" onclick="selectSingle('fqRecommend', 'Ja')"><div class="dot"></div>Ja, auf jeden Fall</button>
+        <button class="option" onclick="selectSingle('fqRecommend', 'Eher ja')"><div class="dot"></div>Eher ja</button>
+        <button class="option" onclick="selectSingle('fqRecommend', 'Eher nein')"><div class="dot"></div>Eher nein</button>
+        <button class="option" onclick="selectSingle('fqRecommend', 'Nein')"><div class="dot"></div>Nein</button>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="submitAll()">Auswertung anzeigen ✓</button>
+    </div>
+  </div>
+
+  <!-- ===== RESULTS ===== -->
+  <div class="screen" id="screen-results">
+    <div class="header">
+      <div class="chip">Auswertung</div>
+      <h1>Deine Ergebnisse 🏆</h1>
+      <p>Hier siehst du, wie sich dein Wissen durch das Spiel verändert hat.</p>
+    </div>
+
+    <div class="compare-grid">
+      <div class="compare-card pre">
+        <div class="label">Pre-Test</div>
+        <div class="value" id="res-pre">—</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:4px">von 8 Punkten</div>
+      </div>
+      <div class="compare-card post">
+        <div class="label">Post-Test</div>
+        <div class="value" id="res-post">—</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:4px">von 8 Punkten</div>
+      </div>
+    </div>
+
+    <div class="delta-badge">
+      Lernzuwachs: <span class="delta" id="res-delta">+0</span> Punkte
+    </div>
+
+    <div class="card" id="res-message" style="text-align:center; padding:28px">
+      <div style="font-size:40px; margin-bottom:12px" id="res-emoji">🎉</div>
+      <p id="res-text" style="line-height:1.7; font-size:15px"></p>
+    </div>
+
+    <div class="download-area">
+      <h3>📊 Daten für die Auswertung</h3>
+      <p>Du kannst deine Ergebnisse als Text kopieren und an das Forschungsteam weitergeben.</p>
+      <textarea id="exportArea" readonly rows="6" style="font-family:'Space Mono',monospace; font-size:11px; margin-bottom:16px; background:var(--surface)"></textarea>
+      <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="copyExport()">📋 Kopieren</button>
+        <button class="btn btn-primary" onclick="downloadCSV()">⬇️ Als CSV speichern</button>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-top:32px; color:var(--muted); font-size:13px">
+      Vielen Dank für deine Teilnahme! 🙏<br>
+      <span style="font-family:'Space Mono',monospace; color: var(--accent)">Hardware Heroes — DHBW Stuttgart 2026</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ==================== DATA ====================
+const questions = [
+  {
+    id: 'q1',
+    text: 'Welche Komponente ist hauptsächlich für die Rechenleistung eines Computers zuständig?',
+    options: ['RAM (Arbeitsspeicher)', 'CPU (Prozessor)', 'SSD (Festplatte)', 'GPU (Grafikkarte)'],
+    correct: 1,
+    explanation: 'Die CPU (Central Processing Unit) ist das "Gehirn" des Computers und führt alle Berechnungen aus. RAM speichert kurzfristig Daten, SSD dauerhaft und GPU übernimmt Grafikberechnungen.'
+  },
+  {
+    id: 'q2',
+    text: 'Welche Aussage über den RAM (Arbeitsspeicher) ist korrekt?',
+    options: [
+      'Daten im RAM bleiben auch nach dem Ausschalten erhalten',
+      'RAM ist der langsamste Speicher im Computer',
+      'RAM ist ein flüchtiger Speicher, der aktiv genutzte Programme hält',
+      'RAM und Festplatte sind dasselbe'
+    ],
+    correct: 2,
+    explanation: 'RAM ist flüchtiger Speicher — beim Ausschalten gehen alle Daten verloren. Er hält gerade aktive Programme und Daten, damit die CPU schnell darauf zugreifen kann.'
+  },
+  {
+    id: 'q3',
+    text: 'Was ist die Hauptaufgabe des Mainboards (Motherboards)?',
+    options: [
+      'Speicherung von Betriebssystemdaten',
+      'Verbindung aller Komponenten und Kommunikation zwischen ihnen',
+      'Berechnung von 3D-Grafiken',
+      'Bereitstellung von Strom für das System'
+    ],
+    correct: 1,
+    explanation: 'Das Mainboard ist die "Schaltzentrale" des Computers. Es verbindet CPU, RAM, Speicher, GPU und alle anderen Komponenten und ermöglicht ihre Kommunikation untereinander.'
+  },
+  {
+    id: 'q4',
+    text: 'Was ist der Unterschied zwischen einem HDD und einem SSD?',
+    options: [
+      'HDD ist schneller als SSD',
+      'SSD nutzt bewegliche Teile, HDD nicht',
+      'SSD speichert Daten auf Flash-Chips, HDD auf magnetischen Scheiben',
+      'Beide sind identisch, nur unterschiedliche Marken'
+    ],
+    correct: 2,
+    explanation: 'SSD (Solid State Drive) verwendet Flash-Speicherchips ohne bewegliche Teile — deshalb ist er schneller, leiser und stoßfester. HDD (Hard Disk Drive) nutzt rotierende magnetische Scheiben.'
+  },
+  {
+    id: 'q5',
+    text: 'Welcher Anschlusstyp wird typischerweise für schnelle Datenverbindungen zwischen Mainboard und GPU genutzt?',
+    options: ['USB', 'PCIe (PCI Express)', 'HDMI', 'SATA'],
+    correct: 1,
+    explanation: 'PCIe (PCI Express) ist das schnelle Erweiterungsinterface auf dem Mainboard, über das die GPU und andere Karten angeschlossen werden. SATA wird für Festplatten genutzt, USB für externe Geräte.'
+  },
+  {
+    id: 'q6',
+    text: 'Ein Computer startet sehr langsam und lädt Programme verzögert. Welche Komponente ist am wahrscheinlichsten das Bottleneck?',
+    options: ['Zu wenig RAM', 'Zu alte GPU', 'Defekte Tastatur', 'Zu schnelle CPU'],
+    correct: 0,
+    explanation: 'Wenn zu wenig RAM vorhanden ist, muss das System Daten auf die (langsamere) Festplatte auslagern — das verlangsamt alles erheblich. Eine alte GPU verlangsamt nur Grafikleistung, nicht den allgemeinen Systemstart.'
+  },
+  {
+    id: 'q7',
+    text: 'Was beschreibt den Begriff "Takt" (Taktfrequenz) bei einer CPU?',
+    options: [
+      'Die Anzahl der Kerne des Prozessors',
+      'Die Menge des integrierten Cache-Speichers',
+      'Die Anzahl der Berechnungszyklen pro Sekunde',
+      'Die Temperatur des Prozessors unter Last'
+    ],
+    correct: 2,
+    explanation: 'Der Takt (in Hz, meist GHz) gibt an, wie viele Berechnungszyklen die CPU pro Sekunde durchführen kann. Ein höherer Takt bedeutet grundsätzlich mehr Leistung (bei gleicher Architektur).'
+  },
+  {
+    id: 'q8',
+    text: 'In welcher Reihenfolge werden Daten typischerweise verarbeitet (von schnellstem zu langsamstem Zugriff)?',
+    options: [
+      'RAM → CPU-Cache → Festplatte',
+      'CPU-Cache → RAM → Festplatte',
+      'Festplatte → RAM → CPU-Cache',
+      'CPU-Cache → Festplatte → RAM'
+    ],
+    correct: 1,
+    explanation: 'Der CPU-Cache ist der schnellste (aber kleinste) Speicher, direkt in der CPU. RAM ist schnell und hält aktive Daten. Die Festplatte (HDD/SSD) ist am langsamsten, speichert aber dauerhaft.'
+  }
+];
+
+// ==================== STATE ====================
+let state = {
+  userCode: '',
+  userGroup: '',
+  priorKnowledge: null,
+  preAnswers: {},
+  postAnswers: {},
+  fragebogen: {},
+  preScore: 0,
+  postScore: 0,
+  freeText: {}
+};
+
+const likertState = {};
+const singleState = {};
+
+// ==================== NAVIGATION ====================
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ==================== LIKERT ====================
+function selectLikert(groupId, value) {
+  const container = document.getElementById(groupId);
+  if (!container) return;
+  container.querySelectorAll('.likert-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', i + 1 === value);
+  });
+  likertState[groupId] = value;
+}
+
+// ==================== SINGLE CHOICE ====================
+function selectSingle(groupId, value) {
+  const container = document.getElementById(groupId);
+  if (!container) return;
+  container.querySelectorAll('.option').forEach(opt => {
+    opt.classList.toggle('selected', opt.textContent.trim().startsWith(value) || opt.textContent.includes(value));
+  });
+  singleState[groupId] = value;
+}
+
+// ==================== BUILD TESTS ====================
+function buildTest(containerId, prefix, showFeedback) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  questions.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.id = `${prefix}_card_${i}`;
+    div.innerHTML = `
+      <div class="q-number">Frage ${i+1} / ${questions.length}</div>
+      <h3>${q.text}</h3>
+      <div class="options" id="${prefix}_opts_${i}">
+        ${q.options.map((opt, j) => `
+          <button class="option" onclick="selectAnswer('${prefix}', ${i}, ${j}, ${showFeedback})">
+            <div class="dot"></div>${opt}
+          </button>
+        `).join('')}
+      </div>
+      ${showFeedback ? `<div class="feedback-box" id="${prefix}_fb_${i}"></div>` : ''}
+    `;
+    container.appendChild(div);
+  });
+}
+
+function selectAnswer(prefix, qi, ai, showFeedback) {
+  const opts = document.querySelectorAll(`#${prefix}_opts_${qi} .option`);
+  opts.forEach((o, j) => {
+    o.classList.remove('selected', 'correct', 'wrong');
+    if (showFeedback) {
+      if (j === questions[qi].correct) o.classList.add('correct');
+      else if (j === ai && j !== questions[qi].correct) o.classList.add('wrong');
+    } else {
+      if (j === ai) o.classList.add('selected');
+    }
+  });
+
+  if (prefix === 'pre') state.preAnswers[qi] = ai;
+  else state.postAnswers[qi] = ai;
+
+  if (showFeedback) {
+    const fb = document.getElementById(`${prefix}_fb_${qi}`);
+    if (fb) {
+      const correct = ai === questions[qi].correct;
+      fb.className = `feedback-box show ${correct ? 'correct' : 'wrong'}`;
+      fb.innerHTML = `<strong>${correct ? '✓ Richtig!' : '✗ Falsch.'}</strong> ${questions[qi].explanation}`;
+    }
+  }
+
+  // update progress
+  const answers = prefix === 'pre' ? state.preAnswers : state.postAnswers;
+  const count = Object.keys(answers).length;
+  const pct = (count / questions.length) * 100;
+  const bar = document.getElementById(`${prefix}Progress`);
+  const txt = document.getElementById(`${prefix}ProgressText`);
+  if (bar) bar.style.width = pct + '%';
+  if (txt) txt.textContent = `${count} / ${questions.length}`;
+}
+
+// ==================== START PRE-TEST ====================
+function startPreTest() {
+  state.userCode = document.getElementById('userCode').value.trim() || 'ANON';
+  state.userGroup = document.getElementById('userGroup').value.trim() || '—';
+  state.priorKnowledge = likertState['priorKnowledge'] || null;
+  buildTest('pretest-questions', 'pre', false);
+  goScreen('screen-pretest');
+}
+
+function buildPostTest() {
+  buildTest('posttest-questions', 'post', true);
+}
+
+// ==================== SUBMIT ====================
+function calcScore(answers) {
+  let score = 0;
+  questions.forEach((q, i) => {
+    if (answers[i] === q.correct) score++;
+  });
+  return score;
+}
+
+function submitPreTest() {
+  state.preScore = calcScore(state.preAnswers);
+  goScreen('screen-play');
+}
+
+function submitPostTest() {
+  state.postScore = calcScore(state.postAnswers);
+  goScreen('screen-fragebogen');
+}
+
+function submitAll() {
+  // collect fragebogen
+  ['fq1','fq2','fq3','fq4','fq5','fq6','fq7','fq8'].forEach(id => {
+    state.fragebogen[id] = likertState[id] || null;
+  });
+  state.freeText.fq9 = document.getElementById('fq9').value;
+  state.freeText.fq10 = document.getElementById('fq10').value;
+  state.fragebogen.recommend = singleState['fqRecommend'] || null;
+
+  showResults();
+  goScreen('screen-results');
+}
+
+// ==================== RESULTS ====================
+function showResults() {
+  document.getElementById('res-pre').textContent = state.preScore;
+  document.getElementById('res-post').textContent = state.postScore;
+  const delta = state.postScore - state.preScore;
+  const deltaEl = document.getElementById('res-delta');
+  deltaEl.textContent = (delta >= 0 ? '+' : '') + delta;
+  deltaEl.style.color = delta > 0 ? 'var(--accent3)' : delta < 0 ? 'var(--accent2)' : 'var(--muted)';
+
+  const emoji = delta >= 4 ? '🚀' : delta >= 2 ? '🎉' : delta >= 0 ? '👍' : '🤔';
+  const msg = delta >= 4
+    ? `Wow, <strong>+${delta} Punkte</strong>! Das Spiel hat bei dir richtig gezündet. Klarer Lernzuwachs in den Grundlagen der PC-Hardware.`
+    : delta >= 2
+    ? `Gutes Ergebnis! <strong>+${delta} Punkte</strong> nach dem Spielen. Du hast einige neue Konzepte verinnerlicht.`
+    : delta >= 1
+    ? `<strong>+${delta} Punkt</strong> — kleiner Fortschritt. Vielleicht lohnt sich ein zweiter Spieldurchgang?`
+    : delta === 0
+    ? `Kein Unterschied — du wusstest es schon vorher gut oder das Spiel hat noch Potenzial. Danke für deine Teilnahme!`
+    : `${delta} Punkte — passiert! Das Ergebnis hilft uns, das Spiel besser zu machen.`;
+
+  document.getElementById('res-emoji').textContent = emoji;
+  document.getElementById('res-text').innerHTML = msg;
+
+  buildExport();
+}
+
+function buildExport() {
+  const ts = new Date().toISOString().slice(0,19).replace('T',' ');
+  const fq = state.fragebogen;
+  const lines = [
+    `=== Hardware Heroes Evaluation ===`,
+    `Zeitstempel: ${ts}`,
+    `Kürzel: ${state.userCode}`,
+    `Gruppe: ${state.userGroup}`,
+    `Vorwissen (1-5): ${state.priorKnowledge || '—'}`,
+    ``,
+    `--- Wissenstest ---`,
+    `Pre-Test Score: ${state.preScore} / ${questions.length}`,
+    `Post-Test Score: ${state.postScore} / ${questions.length}`,
+    `Lernzuwachs: ${state.postScore - state.preScore}`,
+    ``,
+    `--- Fragebogen (Likert 1-5) ---`,
+    `Spaß: ${fq.fq1 || '—'}`,
+    `Motivation: ${fq.fq2 || '—'}`,
+    `Neugier: ${fq.fq3 || '—'}`,
+    `Lerneffekt: ${fq.fq4 || '—'}`,
+    `Verständnis Zusammenhänge: ${fq.fq5 || '—'}`,
+    `Feedback hilfreich: ${fq.fq6 || '—'}`,
+    `Schwierigkeitsgrad: ${fq.fq7 || '—'}`,
+    `Bedienbarkeit: ${fq.fq8 || '—'}`,
+    `Weiterempfehlung: ${fq.recommend || '—'}`,
+    ``,
+    `--- Offene Antworten ---`,
+    `Was gefiel gut: ${state.freeText.fq9 || '—'}`,
+    `Verbesserungen: ${state.freeText.fq10 || '—'}`,
+  ];
+  document.getElementById('exportArea').value = lines.join('\n');
+}
+
+function copyExport() {
+  const area = document.getElementById('exportArea');
+  area.select();
+  document.execCommand('copy');
+  alert('Kopiert! ✓');
+}
+
+function downloadCSV() {
+  const ts = new Date().toISOString().slice(0,19).replace('T',' ');
+  const fq = state.fragebogen;
+  const headers = 'Zeitstempel,Kürzel,Gruppe,Vorwissen,PreScore,PostScore,Zuwachs,Spaß,Motivation,Neugier,Lerneffekt,Zusammenhänge,Feedback,Schwierigkeit,Bedienbarkeit,Empfehlung,GutGefallen,Verbesserungen';
+  const row = [
+    ts, state.userCode, state.userGroup, state.priorKnowledge || '',
+    state.preScore, state.postScore, state.postScore - state.preScore,
+    fq.fq1||'', fq.fq2||'', fq.fq3||'', fq.fq4||'', fq.fq5||'', fq.fq6||'', fq.fq7||'', fq.fq8||'',
+    fq.recommend||'',
+    `"${(state.freeText.fq9||'').replace(/"/g,"'")}"`,
+    `"${(state.freeText.fq10||'').replace(/"/g,"'")}"`,
+  ].join(',');
+
+  const blob = new Blob([headers + '\n' + row], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `hardware-heroes-eval-${state.userCode}-${Date.now()}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
