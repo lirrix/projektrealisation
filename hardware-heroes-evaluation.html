@@ -806,6 +806,7 @@
     </div>
 
     <div style="text-align:center; margin-top:32px; color:var(--muted); font-size:13px">
+      <div style="margin-bottom:8px; color:var(--accent3); font-size:14px">✓ Deine Daten wurden übermittelt</div>
       Vielen Dank für deine Teilnahme! 🙏<br>
       <span style="font-family:'Space Mono',monospace; color: var(--accent)">Hardware Heroes — DHBW Stuttgart 2026</span>
     </div>
@@ -814,6 +815,22 @@
 </div>
 
 <script>
+// ==================== GOOGLE SHEETS ====================
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbzYXNM_gOVCtDZ0JrmD8bRt31Hbjn3jKPFgYFLsSv14ngT22uZJ4sA6EVa4vhj5yWeV/exec";
+
+async function sendToSheets(data) {
+  try {
+    await fetch(SHEETS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+  } catch (e) {
+    console.warn("Sheets-Übertragung fehlgeschlagen:", e);
+  }
+}
+
 // ==================== DATA ====================
 const questions = [
   {
@@ -1032,7 +1049,7 @@ function submitPostTest() {
   goScreen('screen-fragebogen');
 }
 
-function submitAll() {
+async function submitAll() {
   // collect fragebogen
   ['fq1','fq2','fq3','fq4','fq5','fq6','fq7','fq8'].forEach(id => {
     state.fragebogen[id] = likertState[id] || null;
@@ -1040,6 +1057,27 @@ function submitAll() {
   state.freeText.fq9 = document.getElementById('fq9').value;
   state.freeText.fq10 = document.getElementById('fq10').value;
   state.fragebogen.recommend = singleState['fqRecommend'] || null;
+
+  // disable button & show sending state
+  const btn = document.querySelector('#screen-fragebogen .btn-success');
+  if (btn) { btn.disabled = true; btn.textContent = '📤 Wird übermittelt...'; }
+
+  const ts = new Date().toISOString().slice(0,19).replace('T',' ');
+  const fq = state.fragebogen;
+  await sendToSheets({
+    ts,
+    code: state.userCode,
+    group: state.userGroup,
+    priorKnowledge: state.priorKnowledge,
+    preScore: state.preScore,
+    postScore: state.postScore,
+    delta: state.postScore - state.preScore,
+    fq1: fq.fq1, fq2: fq.fq2, fq3: fq.fq3, fq4: fq.fq4,
+    fq5: fq.fq5, fq6: fq.fq6, fq7: fq.fq7, fq8: fq.fq8,
+    recommend: fq.recommend,
+    fq9: state.freeText.fq9,
+    fq10: state.freeText.fq10
+  });
 
   showResults();
   goScreen('screen-results');
