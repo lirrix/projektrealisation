@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Luis Genenger — Reiseblog</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root{
+  --bg:#0e0c09;--bg2:#141210;--surface:#1a1814;--border:#2a2520;--border2:#3a3028;
+  --amber:#d4853a;--amber-dim:rgba(212,133,58,.12);--amber-glow:rgba(212,133,58,.3);
+  --teal:#3a9e8f;--white:#f0ebe0;--muted:#6a6055;--text:#9a9085;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;overflow-x:hidden;cursor:none;}
+
+#cur{position:fixed;width:7px;height:7px;background:var(--amber);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);}
+#cur-r{position:fixed;width:28px;height:28px;border:1px solid rgba(212,133,58,.35);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);}
+
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:999;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:500;padding:20px 48px;display:flex;align-items:center;justify-content:space-between;background:rgba(14,12,9,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.nav-logo{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--white);text-decoration:none;}
+.nav-logo span{color:var(--amber);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:11px;letter-spacing:2px;text-transform:uppercase;transition:color .3s;}
+.nav-links a:hover,.nav-links a.active{color:var(--amber);}
+
+/* HERO */
+.blog-hero{
+  min-height:55vh;display:flex;flex-direction:column;justify-content:flex-end;
+  padding:120px 48px 64px;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse 80% 60% at 20% 80%,rgba(212,133,58,.06) 0%,transparent 70%);
+}
+.blog-hero::before{
+  content:'REISEBLOG';
+  position:absolute;right:-20px;top:50%;transform:translateY(-50%) rotate(90deg);
+  font-family:'Playfair Display',serif;font-size:100px;font-weight:900;
+  color:transparent;-webkit-text-stroke:1px rgba(212,133,58,.06);
+  letter-spacing:-2px;pointer-events:none;white-space:nowrap;
+}
+.hero-eyebrow{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--amber);margin-bottom:16px;opacity:0;animation:fadeUp .9s .1s forwards;}
+.hero-title{font-family:'Playfair Display',serif;font-size:clamp(48px,8vw,100px);font-weight:900;color:var(--white);line-height:.92;letter-spacing:-3px;opacity:0;animation:fadeUp .9s .3s forwards;}
+.hero-title em{font-style:italic;color:var(--amber);}
+.hero-sub{margin-top:20px;font-size:14px;color:var(--muted);max-width:400px;line-height:1.8;opacity:0;animation:fadeUp .9s .5s forwards;}
+.hero-count{
+  margin-top:32px;display:flex;align-items:center;gap:32px;
+  opacity:0;animation:fadeUp .9s .6s forwards;
+}
+.hc-item{display:flex;flex-direction:column;}
+.hc-num{font-family:'Playfair Display',serif;font-size:32px;font-weight:900;color:var(--amber);line-height:1;}
+.hc-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-top:2px;}
+.hc-div{width:1px;height:40px;background:var(--border2);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+
+/* FILTER BAR */
+.filter-bar{
+  padding:24px 48px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--bg2);
+}
+.filter-btn{
+  background:transparent;border:1px solid var(--border2);color:var(--muted);
+  font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  padding:7px 16px;cursor:none;transition:all .3s;
+}
+.filter-btn:hover,.filter-btn.on{border-color:var(--amber);color:var(--amber);background:var(--amber-dim);}
+.filter-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-right:8px;}
+
+/* FEATURED POST */
+.featured-section{padding:64px 48px 0;}
+.sec-label{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--amber);margin-bottom:24px;}
+
+.featured-card{
+  display:grid;grid-template-columns:1fr 1fr;gap:0;
+  border:1px solid var(--border2);background:var(--surface);
+  transition:border-color .4s;cursor:none;text-decoration:none;
+  position:relative;overflow:hidden;
+}
+.featured-card:hover{border-color:var(--amber);}
+.featured-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--amber),var(--teal));
+  transform:scaleX(0);transform-origin:left;transition:transform .5s;
+}
+.featured-card:hover::before{transform:scaleX(1);}
+
+.fc-img{
+  aspect-ratio:4/3;
+  background:linear-gradient(135deg,#1a1208,#2a1e0e,#1a2820);
+  display:flex;align-items:center;justify-content:center;
+  font-size:80px;position:relative;overflow:hidden;
+}
+.fc-img::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(212,133,58,.1),transparent);
+}
+.fc-body{padding:48px 40px;display:flex;flex-direction:column;justify-content:space-between;}
+.fc-tag{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--amber);margin-bottom:16px;}
+.fc-title{font-family:'Playfair Display',serif;font-size:clamp(24px,3vw,36px);font-weight:900;color:var(--white);line-height:1.15;margin-bottom:16px;}
+.fc-excerpt{font-size:13px;color:var(--text);line-height:1.85;margin-bottom:24px;}
+.fc-meta{display:flex;align-items:center;gap:20px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.fc-meta span{display:flex;align-items:center;gap:6px;}
+.fc-read{margin-left:auto;color:var(--amber);font-size:11px;letter-spacing:2px;display:flex;align-items:center;gap:8px;transition:gap .3s;}
+.featured-card:hover .fc-read{gap:14px;}
+.fc-read::after{content:'→';}
+
+/* TIPS highlight in featured */
+.fc-tips{margin-top:20px;padding:16px;background:rgba(212,133,58,.06);border-left:2px solid var(--amber);}
+.fc-tips-title{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--amber);margin-bottom:10px;}
+.fc-tips ul{list-style:none;display:flex;flex-direction:column;gap:6px;}
+.fc-tips li{font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;}
+.fc-tips li::before{content:'✦';color:var(--amber);font-size:8px;}
+
+/* POSTS GRID */
+.posts-section{padding:48px 48px 80px;}
+.posts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1px;background:var(--border);}
+
+.post-card{
+  background:var(--bg);padding:0;
+  text-decoration:none;display:flex;flex-direction:column;
+  transition:background .35s;cursor:none;position:relative;overflow:hidden;
+}
+.post-card:hover{background:var(--surface);}
+.post-card::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:var(--amber);transform:scaleX(0);transform-origin:left;transition:transform .4s;
+}
+.post-card:hover::after{transform:scaleX(1);}
+
+.pc-img{
+  aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
+  font-size:52px;position:relative;overflow:hidden;
+}
+.pi1{background:linear-gradient(135deg,#1a1208,#2a1e08);}
+.pi2{background:linear-gradient(135deg,#081a18,#082a24);}
+.pi3{background:linear-gradient(135deg,#0e0818,#180828);}
+.pi4{background:linear-gradient(135deg,#1a1408,#281e08);}
+.pi5{background:linear-gradient(135deg,#081218,#081e28);}
+
+.pc-body{padding:28px 28px 20px;}
+.pc-country{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
+.pc-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--white);line-height:1.25;margin-bottom:8px;}
+.pc-excerpt{font-size:12px;color:var(--text);line-height:1.8;margin-bottom:16px;}
+
+.pc-tips{padding:12px 14px;background:rgba(212,133,58,.05);border-left:1.5px solid rgba(212,133,58,.3);margin-bottom:16px;}
+.pc-tips p{font-size:11px;color:var(--muted);line-height:1.7;}
+.pc-tips p strong{color:var(--amber);font-weight:400;}
+
+.pc-footer{padding:16px 28px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;margin-top:auto;}
+.pc-date{font-size:10px;letter-spacing:1px;color:var(--muted);}
+.pc-read{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);}
+
+/* SIDEBAR LAYOUT for posts */
+.posts-layout{display:grid;grid-template-columns:1fr 300px;gap:48px;padding:48px 48px 80px;align-items:start;}
+.posts-main{}
+.posts-sidebar{position:sticky;top:90px;}
+
+.sidebar-card{background:var(--surface);border:1px solid var(--border2);padding:28px;margin-bottom:20px;}
+.sidebar-title{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--white);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.dest-list{display:flex;flex-direction:column;gap:10px;}
+.dest-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);cursor:none;}
+.dest-item:last-child{border-bottom:none;}
+.dest-flag{font-size:20px;}
+.dest-name{font-size:12px;color:var(--white);}
+.dest-count{margin-left:auto;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border:1px solid var(--border2);padding:2px 8px;}
+
+.tag-cloud{display:flex;flex-wrap:wrap;gap:8px;}
+.cloud-tag{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;border:1px solid var(--border2);color:var(--muted);transition:all .3s;cursor:none;}
+.cloud-tag:hover{border-color:var(--amber);color:var(--amber);}
+
+/* FOOTER */
+footer{padding:48px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);}
+.footer-logo{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--white);text-decoration:none;}
+.footer-logo span{color:var(--amber);}
+.footer-copy{font-size:11px;color:var(--muted);}
+.footer-nav{display:flex;gap:20px;}
+.footer-nav a{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color .3s;}
+.footer-nav a:hover{color:var(--amber);}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .8s,transform .8s;}
+.reveal.visible{opacity:1;transform:translateY(0);}
+
+@media(max-width:900px){
+  nav{padding:18px 20px;}
+  .blog-hero{padding:100px 20px 48px;}
+  .featured-section,.filter-bar{padding-left:20px;padding-right:20px;}
+  .featured-card{grid-template-columns:1fr;}
+  .posts-layout{grid-template-columns:1fr;padding:32px 20px 60px;}
+  .posts-sidebar{display:none;}
+  footer{flex-direction:column;gap:16px;padding:32px 20px;text-align:center;}
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="cur-r"></div>
+
+<nav>
+  <a href="index.html" class="nav-logo">Luis <span>Genenger</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="blog.html" class="active">Blog</a></li>
+    <li><a href="index.html#projects">Projekte</a></li>
+    <li><a href="index.html#map-sec">Karte</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="blog-hero">
+  <div class="hero-eyebrow">Geschichten aus aller Welt</div>
+  <h1 class="hero-title">Reise<em>blog</em><span style="color:var(--amber)">.</span></h1>
+  <p class="hero-sub">Ehrliche Erfahrungen, echte Tipps und persönliche Geschichten — aus den Ländern die mich geprägt haben.</p>
+  <div class="hero-count">
+    <div class="hc-item"><div class="hc-num">13</div><div class="hc-label">Länder</div></div>
+    <div class="hc-div"></div>
+    <div class="hc-item"><div class="hc-num">5</div><div class="hc-label">Posts</div></div>
+    <div class="hc-div"></div>
+    <div class="hc-item"><div class="hc-num">4</div><div class="hc-label">Kontinente</div></div>
+  </div>
+</section>
+
+<!-- FILTER -->
+<div class="filter-bar reveal">
+  <span class="filter-label">Filter:</span>
+  <button class="filter-btn on">Alle</button>
+  <button class="filter-btn">Asien</button>
+  <button class="filter-btn">Europa</button>
+  <button class="filter-btn">Naher Osten</button>
+  <button class="filter-btn">Digital Nomad</button>
+  <button class="filter-btn">Tipps</button>
+</div>
+
+<!-- FEATURED -->
+<section class="featured-section">
+  <div class="sec-label reveal">— Aktuellster Beitrag</div>
+  <a href="blog-tokyo.html" class="featured-card reveal">
+    <div class="fc-img">🇯🇵</div>
+    <div class="fc-body">
+      <div>
+        <div class="fc-tag">Japan · Asien · Feb 2025</div>
+        <h2 class="fc-title">Tokyo & Kyoto — Kontraste einer anderen Welt</h2>
+        <p class="fc-excerpt">3 Wochen zwischen Hochhäusern und Reisfeldern. Was ich über Remote Work auf Reisen gelernt habe — und warum Japan mein Denken über Produktivität für immer verändert hat.</p>
+        <div class="fc-tips">
+          <div class="fc-tips-title">✦ Top Tipps</div>
+          <ul>
+            <li>IC Card (Suica) sofort am Flughafen kaufen</li>
+            <li>Coworking: Fabbit Shinjuku für Remote-Worker</li>
+            <li>Kyoto früh morgens — vor 8 Uhr keine Touristen</li>
+          </ul>
+        </div>
+      </div>
+      <div class="fc-meta">
+        <span>📖 8 min lesen</span>
+        <span>✦ Featured</span>
+        <span class="fc-read">Lesen</span>
+      </div>
+    </div>
+  </a>
+</section>
+
+<!-- POSTS + SIDEBAR -->
+<div class="posts-layout">
+  <div class="posts-main">
+    <div class="sec-label reveal" style="margin-bottom:24px;">— Alle Beiträge</div>
+    <div class="posts-grid">
+
+      <a href="blog-tokyo.html" class="post-card reveal">
+        <div class="pc-img pi1">🇯🇵</div>
+        <div class="pc-body">
+          <div class="pc-country">Japan · Feb 2025</div>
+          <h3 class="pc-title">Tokyo & Kyoto — Kontraste einer anderen Welt</h3>
+          <p class="pc-excerpt">3 Wochen Remote Work, Tempel und Ramen um Mitternacht.</p>
+          <div class="pc-tips"><p><strong>Tipp:</strong> IC Card sofort kaufen, Fabbit Coworking in Shinjuku.</p></div>
+        </div>
+        <div class="pc-footer"><span class="pc-date">Feb 2025</span><span class="pc-read">8 min →</span></div>
+      </a>
+
+      <a href="#" class="post-card reveal" style="transition-delay:.08s">
+        <div class="pc-img pi2">🇹🇭</div>
+        <div class="pc-body">
+          <div class="pc-country">Thailand · Nov 2024</div>
+          <h3 class="pc-title">Chiang Mai — Das Mekka der Digital Nomads</h3>
+          <p class="pc-excerpt">Warum jeder Remote-Worker einmal nach Chiang Mai muss.</p>
+          <div class="pc-tips"><p><strong>Tipp:</strong> CAMP Coworking (kostenlos mit Kaffee), Nimman-Viertel zum Wohnen.</p></div>
+        </div>
+        <div class="pc-footer"><span class="pc-date">Nov 2024</span><span class="pc-read">6 min →</span></div>
+      </a>
+
+      <a href="#" class="post-card reveal" style="transition-delay:.16s">
+        <div class="pc-img pi3">🇵🇹</div>
+        <div class="pc-body">
+          <div class="pc-country">Portugal · Aug 2024</div>
+          <h3 class="pc-title">Lissabon — Europas Startup-Hauptstadt</h3>
+          <p class="pc-excerpt">Ein Monat, drei Coworking-Spaces und die beste Pastéis de Nata der Welt.</p>
+          <div class="pc-tips"><p><strong>Tipp:</strong> Second Home Coworking, LX Factory am Wochenende, NHT Zug für Tagestouren.</p></div>
+        </div>
+        <div class="pc-footer"><span class="pc-date">Aug 2024</span><span class="pc-read">5 min →</span></div>
+      </a>
+
+      <a href="#" class="post-card reveal" style="transition-delay:.24s">
+        <div class="pc-img pi4">🇦🇪</div>
+        <div class="pc-body">
+          <div class="pc-country">UAE · Jun 2024</div>
+          <h3 class="pc-title">Dubai — Business & Exzess</h3>
+          <p class="pc-excerpt">Was hinter dem Glamour steckt — und ob Dubai wirklich für Freelancer taugt.</p>
+          <div class="pc-tips"><p><strong>Tipp:</strong> Dubai free zones für Visa, Metro ist günstig, Hitze im Juni unterschätzen.</p></div>
+        </div>
+        <div class="pc-footer"><span class="pc-date">Jun 2024</span><span class="pc-read">4 min →</span></div>
+      </a>
+
+      <a href="#" class="post-card reveal" style="transition-delay:.32s">
+        <div class="pc-img pi5">🇬🇷</div>
+        <div class="pc-body">
+          <div class="pc-country">Griechenland · Apr 2024</div>
+          <h3 class="pc-title">Athen — Mehr als Akropolis</h3>
+          <p class="pc-excerpt">Warum Athen unterschätzt ist — günstiges Leben, schnelles Internet, gutes Essen.</p>
+          <div class="pc-tips"><p><strong>Tipp:</strong> Monastiraki für Flair, Syntagma für Coworking, April ist perfektes Wetter.</p></div>
+        </div>
+        <div class="pc-footer"><span class="pc-date">Apr 2024</span><span class="pc-read">5 min →</span></div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="posts-sidebar">
+    <div class="sidebar-card reveal">
+      <div class="sidebar-title">Destinationen</div>
+      <div class="dest-list">
+        <div class="dest-item"><span class="dest-flag">🇯🇵</span><span class="dest-name">Japan</span><span class="dest-count">1 Post</span></div>
+        <div class="dest-item"><span class="dest-flag">🇹🇭</span><span class="dest-name">Thailand</span><span class="dest-count">1 Post</span></div>
+        <div class="dest-item"><span class="dest-flag">🇵🇹</span><span class="dest-name">Portugal</span><span class="dest-count">1 Post</span></div>
+        <div class="dest-item"><span class="dest-flag">🇦🇪</span><span class="dest-name">UAE</span><span class="dest-count">1 Post</span></div>
+        <div class="dest-item"><span class="dest-flag">🇬🇷</span><span class="dest-name">Griechenland</span><span class="dest-count">1 Post</span></div>
+      </div>
+    </div>
+    <div class="sidebar-card reveal" style="transition-delay:.1s">
+      <div class="sidebar-title">Themen</div>
+      <div class="tag-cloud">
+        <span class="cloud-tag">Remote Work</span>
+        <span class="cloud-tag">Coworking</span>
+        <span class="cloud-tag">Kosten</span>
+        <span class="cloud-tag">Visa</span>
+        <span class="cloud-tag">Essen</span>
+        <span class="cloud-tag">Unterkunft</span>
+        <span class="cloud-tag">Digital Nomad</span>
+        <span class="cloud-tag">Kultur</span>
+        <span class="cloud-tag">Tipps</span>
+      </div>
+    </div>
+    <div class="sidebar-card reveal" style="transition-delay:.2s">
+      <div class="sidebar-title">Über den Blog</div>
+      <p style="font-size:12px;color:var(--text);line-height:1.85;">Ich bin Luis — Wirtschaftsinformatiker aus Köln, fertig im September 2025. Ich schreibe über ehrliche Reiseerfahrungen und Remote-Work-Tipps.</p>
+      <a href="index.html" style="display:inline-block;margin-top:16px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);text-decoration:none;">Mehr über mich →</a>
+    </div>
+  </aside>
+</div>
+
+<footer>
+  <a href="index.html" class="footer-logo">Luis <span>Genenger</span></a>
+  <div class="footer-copy">© 2025 · Wirtschaftsinformatiker · Köln</div>
+  <nav class="footer-nav">
+    <a href="index.html">Home</a>
+    <a href="blog.html">Blog</a>
+    <a href="#">LinkedIn</a>
+    <a href="#">GitHub</a>
+  </nav>
+</footer>
+
+<script>
+const cur=document.getElementById('cur'),curR=document.getElementById('cur-r');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+(function l(){cur.style.left=mx+'px';cur.style.top=my+'px';rx+=(mx-rx)*.12;ry+=(my-ry)*.12;curR.style.left=rx+'px';curR.style.top=ry+'px';requestAnimationFrame(l);})();
+document.querySelectorAll('a,button,.post-card,.featured-card,.dest-item').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.transform='translate(-50%,-50%) scale(2.5)';cur.style.opacity='.4';});
+  el.addEventListener('mouseleave',()=>{cur.style.transform='translate(-50%,-50%) scale(1)';cur.style.opacity='1';});
+});
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+  });
+});
+
+// Reveal
+const obs=new IntersectionObserver(e=>{e.forEach(el=>{if(el.isIntersecting)el.target.classList.add('visible');});},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+</script>
+</body>
+</html>
