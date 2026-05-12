@@ -94,7 +94,7 @@ function showScreen(id) {
   });
 }
 
-function showMenu() { playClick(); showScreen('screen-menu'); }
+function showMenu() { playClick(); showScreen('screen-menu'); updateMenuStats(); }
 function showLevelSelect() { playClick(); showScreen('screen-levelselect'); updateStarDisplay(); }
 function showTutorial() { playClick(); showScreen('screen-tutorial'); }
 function showCredits() { playClick(); showScreen('screen-credits'); }
@@ -471,7 +471,7 @@ const LEVELS = {
 let currentLevel = 1;
 let currentQuestion = 0;
 let score = 0;
-let stars = { 1: 0, 2: 0, 3: 0 };
+let stars = { 1: 0, 2: 0 };
 let matchSelectedTerm = null;
 let matchSelectedDef  = null;
 let matchPairs = [];
@@ -872,7 +872,7 @@ function loadProgress() {
 }
 
 function updateStarDisplay() {
-  [1,2,3].forEach(lvl => {
+  [1,2].forEach(lvl => {
     [1,2,3].forEach(si => {
       const el = document.getElementById(`l${lvl}s${si}`);
       if (el) el.classList.toggle('earned', si <= stars[lvl]);
@@ -880,10 +880,61 @@ function updateStarDisplay() {
   });
 }
 
+// ==================== FLOATING MENU ICONS ====================
+const MENU_ICONS = [
+  // CPU
+  { svg: `<svg viewBox="0 0 60 60" width="80" height="80"><rect x="8" y="8" width="44" height="44" rx="5" fill="none" stroke="#00BCD4" stroke-width="2.5"/><rect x="16" y="16" width="28" height="28" rx="3" fill="none" stroke="#00E5FF" stroke-width="1.5"/>${[0,1,2,3].map(i=>`<rect x="${10+i*11}" y="2" width="5" height="6" rx="1" fill="#00BCD4"/>`).join('')}${[0,1,2,3].map(i=>`<rect x="${10+i*11}" y="52" width="5" height="6" rx="1" fill="#00BCD4"/>`).join('')}</svg>`, x: 8, y: 12, dur: 20, delay: 0 },
+  // GPU
+  { svg: `<svg viewBox="0 0 100 42" width="130" height="56"><rect x="3" y="3" width="94" height="36" rx="4" fill="none" stroke="#FF6D00" stroke-width="2"/><circle cx="25" cy="20" r="10" fill="none" stroke="#FF9800" stroke-width="1.5"/>${[0,1,2,3,4,5].map(i=>`<line x1="25" y1="20" x2="${25+8*Math.cos(i*60*Math.PI/180)}" y2="${20+8*Math.sin(i*60*Math.PI/180)}" stroke="#FF9800" stroke-width="1.5" stroke-linecap="round"/>`).join('')}<rect x="3" y="34" width="94" height="7" rx="2" fill="none" stroke="#FF6D00" stroke-width="1"/></svg>`, x: 75, y: 5, dur: 25, delay: 3 },
+  // RAM
+  { svg: `<svg viewBox="0 0 90 28" width="110" height="34"><rect x="3" y="4" width="84" height="20" rx="2" fill="none" stroke="#7C4DFF" stroke-width="2"/>${[0,1,2,3,4,5,6,7].map(i=>`<rect x="${7+i*9}" y="7" width="6" height="9" rx="1" fill="none" stroke="#9C6DFF" stroke-width="1"/>`).join('')}</svg>`, x: 20, y: 72, dur: 22, delay: 6 },
+  // Mainboard
+  { svg: `<svg viewBox="0 0 80 60" width="100" height="75"><rect x="3" y="3" width="74" height="54" rx="3" fill="none" stroke="#4CAF50" stroke-width="2"/><rect x="8" y="7" width="26" height="26" rx="2" fill="none" stroke="#81C784" stroke-width="1.5"/><rect x="37" y="7" width="34" height="12" rx="1.5" fill="none" stroke="#66BB6A" stroke-width="1"/><rect x="8" y="40" width="64" height="9" rx="1.5" fill="none" stroke="#FF5722" stroke-width="1"/></svg>`, x: 65, y: 65, dur: 28, delay: 9 },
+  // PSU
+  { svg: `<svg viewBox="0 0 60 50" width="75" height="62"><rect x="3" y="3" width="54" height="44" rx="4" fill="none" stroke="#FFA000" stroke-width="2"/><circle cx="22" cy="24" r="10" fill="none" stroke="#FFA000" stroke-width="1.5"/>${[0,1,2,3,4,5].map(i=>`<line x1="22" y1="24" x2="${22+8*Math.cos(i*60*Math.PI/180)}" y2="${24+8*Math.sin(i*60*Math.PI/180)}" stroke="#FFA000" stroke-width="1.5" stroke-linecap="round"/>`).join('')}</svg>`, x: 40, y: 40, dur: 18, delay: 12 },
+  // SSD
+  { svg: `<svg viewBox="0 0 80 28" width="100" height="35"><rect x="3" y="3" width="74" height="22" rx="3" fill="none" stroke="#00ACC1" stroke-width="2"/><rect x="7" y="6" width="18" height="12" rx="2" fill="none" stroke="#00BCD4" stroke-width="1"/><rect x="28" y="6" width="18" height="12" rx="2" fill="none" stroke="#00BCD4" stroke-width="1"/><rect x="50" y="6" width="14" height="12" rx="2" fill="none" stroke="#00ACC1" stroke-width="1"/></svg>`, x: 5, y: 50, dur: 30, delay: 4 },
+  // Cooler
+  { svg: `<svg viewBox="0 0 60 60" width="72" height="72"><rect x="8" y="8" width="44" height="44" rx="5" fill="none" stroke="#29B6F6" stroke-width="2"/><circle cx="30" cy="30" r="14" fill="none" stroke="#4FC3F7" stroke-width="2"/>${[0,1,2,3].map(i=>`<path d="M30,30 Q${30+12*Math.cos((i*90-45)*Math.PI/180)},${30+12*Math.sin((i*90-45)*Math.PI/180)} ${30+16*Math.cos((i*90)*Math.PI/180)},${30+16*Math.sin((i*90)*Math.PI/180)} Q${30+12*Math.cos((i*90+45)*Math.PI/180)},${30+12*Math.sin((i*90+45)*Math.PI/180)} 30,30 Z" fill="none" stroke="#29B6F6" stroke-width="1"/>`).join('')}</svg>`, x: 85, y: 45, dur: 24, delay: 7 },
+  // Fan
+  { svg: `<svg viewBox="0 0 55 55" width="65" height="65"><rect x="3" y="3" width="49" height="49" rx="6" fill="none" stroke="#546E7A" stroke-width="2"/><circle cx="27" cy="27" r="20" fill="none" stroke="#455A64" stroke-width="1.5"/><circle cx="27" cy="27" r="5" fill="none" stroke="#78909C" stroke-width="1.5"/></svg>`, x: 55, y: 80, dur: 32, delay: 2 },
+];
+
+function buildFloatingIcons() {
+  const layer = document.getElementById('floatingIcons');
+  if (!layer) return;
+  layer.innerHTML = '';
+  MENU_ICONS.forEach((icon, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'float-icon';
+    wrap.style.cssText = `
+      left: ${icon.x}%;
+      top:  ${icon.y}%;
+      --dur:   ${icon.dur}s;
+      --delay: ${icon.delay}s;
+      --r0: ${(Math.random()-0.5)*20}deg;
+      --r1: ${(Math.random()-0.5)*20}deg;
+      --r2: ${(Math.random()-0.5)*20}deg;
+    `;
+    wrap.innerHTML = icon.svg;
+    layer.appendChild(wrap);
+  });
+}
+
+// ==================== MENU STATS ====================
+function updateMenuStats() {
+  const totalStars = Object.values(stars).reduce((a,b) => a + b, 0);
+  const totalLevels = Object.values(stars).filter(s => s > 0).length;
+  const elS = document.getElementById('statStars');
+  const elL = document.getElementById('statLevels');
+  if (elS) elS.textContent = totalStars;
+  if (elL) elL.textContent = totalLevels;
+}
+
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
   loadProgress();
   showScreen('screen-menu');
-  // Animate star display on menu
-  setTimeout(() => updateStarDisplay(), 100);
+  buildFloatingIcons();
+  setTimeout(() => { updateStarDisplay(); updateMenuStats(); }, 100);
 });
