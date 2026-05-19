@@ -164,7 +164,7 @@
   <div id="intro-overlay">
     <h2>Level 4 – PC Baumeister</h2>
     <p>Baue den PC zusammen —<br>klicke eine Komponente, dann den richtigen Slot.</p>
-    <button id="btn-start">Los geht's!</button>
+    <button id="btn-start" onclick="startGame()">Los geht's!</button>
   </div>
 
   <div id="hud-progress">
@@ -178,6 +178,15 @@
     <button id="btn-weiter">Weiter &rarr;</button>
   </div>
 
+  <script>
+    function startGame() {
+      var el = document.getElementById('intro-overlay');
+      if (!el) return;
+      el.style.opacity = '0';
+      el.style.pointerEvents = 'none';
+      setTimeout(function() { el.style.display = 'none'; }, 550);
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
@@ -378,12 +387,6 @@
       document.getElementById('score-display').textContent = score;
       document.getElementById('win-overlay').classList.add('visible');
     }
-
-    document.getElementById('btn-start').addEventListener('click', () => {
-      const el = document.getElementById('intro-overlay');
-      el.classList.add('hidden');
-      el.addEventListener('transitionend', () => { el.style.display = 'none'; }, { once: true });
-    });
 
     document.getElementById('btn-weiter').addEventListener('click', () => {
       const score = Math.max(0, 1000 - wrongAttempts * 100);
