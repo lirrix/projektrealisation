@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Level 4 – PC Baumeister</title>
+  <style>
+    :root { --accent: #6c63ff; --accent3: #43e97b; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0f; }
+    canvas { display: block; }
+    .label {
+      color: #fff;
+      font-family: monospace;
+      font-size: 12px;
+      background: rgba(0,0,0,0.55);
+      padding: 2px 6px;
+      border-radius: 3px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    /* HUD */
+    #hud-progress {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0,0,0,0.65);
+      padding: 8px 18px;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+    #hud-progress span {
+      font-family: monospace;
+      font-size: 14px;
+      color: #fff;
+      white-space: nowrap;
+    }
+    #progress-track {
+      width: 150px;
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    #progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent3);
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    /* Error */
+    #error-overlay {
+      position: absolute;
+      bottom: 48px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      background: rgba(160,20,20,0.93);
+      color: #fff;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 10px 22px;
+      border-radius: 6px;
+      max-width: 440px;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    #error-overlay.visible { opacity: 1; }
+    /* Intro */
+    #intro-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,10,15,0.93);
+      transition: opacity 0.5s ease;
+    }
+    #intro-overlay.hidden { opacity: 0; pointer-events: none; }
+    #intro-overlay h2 {
+      font-family: monospace;
+      font-size: clamp(20px, 4vw, 32px);
+      color: var(--accent);
+      text-align: center;
+      padding: 0 24px;
+      margin-bottom: 16px;
+      text-shadow: 0 0 22px var(--accent);
+    }
+    #intro-overlay p {
+      font-family: monospace;
+      font-size: clamp(13px, 2.5vw, 16px);
+      color: #ccc;
+      text-align: center;
+      max-width: 480px;
+      padding: 0 28px;
+      margin-bottom: 36px;
+      line-height: 1.7;
+    }
+    #btn-start {
+      font-family: monospace;
+      font-size: 17px;
+      padding: 12px 36px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    #btn-start:hover { background: #857aff; transform: scale(1.04); }
+    /* Win */
+    #win-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.78);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.7s ease;
+    }
+    #win-overlay.visible { opacity: 1; pointer-events: auto; }
+    #win-overlay h1 {
+      font-family: monospace;
+      font-size: clamp(32px, 7vw, 52px);
+      color: var(--accent3);
+      margin-bottom: 14px;
+      text-shadow: 0 0 28px var(--accent3), 0 0 8px var(--accent3);
+    }
+    #win-overlay p {
+      font-family: monospace;
+      font-size: clamp(15px, 3vw, 20px);
+      color: #fff;
+      margin-bottom: 36px;
+    }
+    #btn-weiter {
+      font-family: monospace;
+      font-size: 18px;
+      padding: 12px 36px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    #btn-weiter:hover { background: #857aff; transform: scale(1.04); }
+  </style>
+</head>
+<body>
+  <div id="intro-overlay">
+    <h2>Level 4 – PC Baumeister</h2>
+    <p>Baue den PC zusammen —<br>klicke eine Komponente, dann den richtigen Slot.</p>
+    <button id="btn-start">Los geht's!</button>
+  </div>
+
+  <div id="hud-progress">
+    <span id="progress-text">0 / 6 Komponenten eingebaut</span>
+    <div id="progress-track"><div id="progress-fill"></div></div>
+  </div>
+  <div id="error-overlay"></div>
+  <div id="win-overlay">
+    <h1>PC fertig! ⚡</h1>
+    <p>Punktestand: <span id="score-display">1000</span></p>
+    <button id="btn-weiter">Weiter &rarr;</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a0f);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(4, 3, 6);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    dirLight.position.set(5, 8, 5);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    // PC case: 2 (B) x 3 (H) x 1 (T), open at the front (negative Z face)
+    const caseGroup = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: 0x888888, side: THREE.FrontSide });
+    const thickness = 0.05;
+
+    // Back panel
+    const back = new THREE.Mesh(new THREE.BoxGeometry(2, 3, thickness), mat);
+    back.position.set(0, 0, -0.5 + thickness / 2);
+    caseGroup.add(back);
+
+    // Left panel
+    const left = new THREE.Mesh(new THREE.BoxGeometry(thickness, 3, 1), mat);
+    left.position.set(-1 + thickness / 2, 0, 0);
+    caseGroup.add(left);
+
+    // Right panel
+    const right = new THREE.Mesh(new THREE.BoxGeometry(thickness, 3, 1), mat);
+    right.position.set(1 - thickness / 2, 0, 0);
+    caseGroup.add(right);
+
+    // Top panel
+    const top = new THREE.Mesh(new THREE.BoxGeometry(2, thickness, 1), mat);
+    top.position.set(0, 1.5 - thickness / 2, 0);
+    caseGroup.add(top);
+
+    // Bottom panel
+    const bottom = new THREE.Mesh(new THREE.BoxGeometry(2, thickness, 1), mat);
+    bottom.position.set(0, -1.5 + thickness / 2, 0);
+    caseGroup.add(bottom);
+
+    scene.add(caseGroup);
+
+    // CSS2DRenderer for labels
+    const labelRenderer = new THREE.CSS2DRenderer();
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    document.body.appendChild(labelRenderer.domElement);
+
+    function makeLabel(text) {
+      const div = document.createElement('div');
+      div.className = 'label';
+      div.textContent = text;
+      const obj = new THREE.CSS2DObject(div);
+      return obj;
+    }
+
+    // Shelf components: left of the case
+    const componentDefs = [
+      { name: 'CPU',       color: 0xdd2222, size: [0.4,  0.4,  0.4 ], pos: [-2.5,  1.0,   0] },
+      { name: 'RAM',       color: 0x2255dd, size: [0.15, 0.7,  0.3 ], pos: [-2.5,  0.2,   0] },
+      { name: 'GPU',       color: 0x22aa44, size: [0.8,  0.25, 0.3 ], pos: [-2.5, -0.3,   0] },
+      { name: 'Mainboard', color: 0xddcc00, size: [0.9,  0.7,  0.05], pos: [-2.5, -1.0,   0] },
+      { name: 'SSD',       color: 0xee7700, size: [0.5,  0.1,  0.35], pos: [-2.5,  1.65,  0] },
+      { name: 'Netzteil',  color: 0x9933cc, size: [0.6,  0.5,  0.5 ], pos: [-2.5, -1.75,  0] },
+    ];
+
+    const componentMeshes = [];
+
+    componentDefs.forEach(({ name, color, size, pos }) => {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(...size),
+        new THREE.MeshStandardMaterial({ color })
+      );
+      mesh.position.set(...pos);
+      mesh.userData.type = 'component';
+      mesh.userData.name = name;
+
+      const label = makeLabel(name);
+      label.position.set(0, size[1] / 2 + 0.18, 0);
+      mesh.add(label);
+
+      componentMeshes.push(mesh);
+      scene.add(mesh);
+    });
+
+    // Slots inside the case at realistic positions
+    // Case interior: x∈[-0.95,0.95], y∈[-1.45,1.45], z∈[-0.45,0.45], open front
+    const slotDefs = [
+      { name: 'Mainboard', size: [1.6,  2.0,  0.02], pos: [ 0.0,   0.0,  -0.40] },
+      { name: 'CPU',       size: [0.45, 0.45, 0.06], pos: [ 0.15,  0.55, -0.34] },
+      { name: 'RAM',       size: [0.15, 0.65, 0.04], pos: [ 0.55,  0.35, -0.34] },
+      { name: 'GPU',       size: [0.78, 0.18, 0.28], pos: [ 0.0,  -0.35, -0.15] },
+      { name: 'SSD',       size: [0.5,  0.08, 0.35], pos: [ 0.0,  -1.15,  0.0 ] },
+      { name: 'Netzteil',  size: [0.6,  0.48, 0.48], pos: [ 0.0,   1.0,   0.0 ] },
+    ];
+
+    const slotMeshes = [];
+
+    slotDefs.forEach(({ name, size, pos }) => {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(...size),
+        new THREE.MeshStandardMaterial({
+          color: 0x6c63ff,
+          transparent: true,
+          opacity: 0.18,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        })
+      );
+      mesh.position.set(...pos);
+      mesh.userData.type = 'slot';
+      mesh.userData.accepts = name;
+
+      const label = makeLabel('[ ' + name + ' ]');
+      label.position.set(0, size[1] / 2 + 0.12, 0);
+      mesh.add(label);
+
+      slotMeshes.push(mesh);
+      scene.add(mesh);
+    });
+
+    // Game logic
+    const wrongMsg = {
+      'CPU':       'Die CPU gehört in den CPU-Sockel auf dem Mainboard – nicht in diesen Slot.',
+      'RAM':       'Der RAM gehört in die RAM-Steckplätze direkt neben dem CPU-Sockel auf dem Mainboard.',
+      'GPU':       'Die GPU gehört in den PCIe-Slot am Mainboard, nicht hier.',
+      'Mainboard': 'Das Mainboard wird zuerst als Basis flach an der Rückwand des Gehäuses montiert.',
+      'SSD':       'Die SSD gehört in den Laufwerksschacht im unteren Gehäusebereich.',
+      'Netzteil':  'Das Netzteil gehört in das Netzteilfach oben im Gehäuse.',
+    };
+
+    let installed = 0;
+    let wrongAttempts = 0;
+    let gameOver = false;
+    const totalSlots = slotDefs.length;
+
+    function updateProgress() {
+      document.getElementById('progress-text').textContent =
+        installed + ' / ' + totalSlots + ' Komponenten eingebaut';
+      document.getElementById('progress-fill').style.width =
+        (installed / totalSlots * 100) + '%';
+      if (installed === totalSlots) onLevelComplete();
+    }
+
+    let errorHideTimer = null;
+    function showError(msg) {
+      const el = document.getElementById('error-overlay');
+      el.textContent = msg;
+      el.classList.add('visible');
+      clearTimeout(errorHideTimer);
+      errorHideTimer = setTimeout(() => el.classList.remove('visible'), 3200);
+    }
+
+    function onLevelComplete() {
+      gameOver = true;
+      startCaseFlash();
+      setTimeout(startOrbitAnim, 400);
+    }
+
+    let caseFlashStart = null;
+    function startCaseFlash() {
+      caseFlashStart = Date.now();
+    }
+
+    let orbitAnim = null;
+    function startOrbitAnim() {
+      controls.enabled = false;
+      const p = camera.position;
+      const radius = Math.sqrt(p.x * p.x + p.z * p.z);
+      orbitAnim = {
+        startTime: Date.now(),
+        duration: 3000,
+        startAngle: Math.atan2(p.x, p.z),
+        radius,
+        height: p.y,
+      };
+    }
+
+    function showWinOverlay() {
+      const score = Math.max(0, 1000 - wrongAttempts * 100);
+      document.getElementById('score-display').textContent = score;
+      document.getElementById('win-overlay').classList.add('visible');
+    }
+
+    document.getElementById('btn-start').addEventListener('click', () => {
+      const el = document.getElementById('intro-overlay');
+      el.classList.add('hidden');
+      el.addEventListener('transitionend', () => { el.style.display = 'none'; }, { once: true });
+    });
+
+    document.getElementById('btn-weiter').addEventListener('click', () => {
+      const score = Math.max(0, 1000 - wrongAttempts * 100);
+      window.parent.postMessage({ type: 'levelComplete', level: 4, score }, '*');
+      window.location.href = 'https://luisgetlost.me';
+    });
+
+    // Raycasting — shared handler for mouse and touch
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let selectedComponent = null;
+    const pointerDownPos = new THREE.Vector2();
+
+    function handlePointer(clientX, clientY) {
+      if (gameOver) return;
+      mouse.x =  (clientX / window.innerWidth)  * 2 - 1;
+      mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+
+      const compHits = raycaster.intersectObjects(componentMeshes);
+      if (compHits.length > 0) {
+        const hit = compHits[0].object;
+        if (selectedComponent) {
+          selectedComponent.material.emissive.setHex(0x000000);
+          selectedComponent.material.emissiveIntensity = 0;
+        }
+        selectedComponent = (selectedComponent === hit) ? null : hit;
+        if (selectedComponent) {
+          selectedComponent.material.emissive.setHex(0x6c63ff);
+          selectedComponent.material.emissiveIntensity = 0.7;
+        }
+        return;
+      }
+
+      const slotHits = raycaster.intersectObjects(slotMeshes);
+      if (slotHits.length > 0) {
+        const slot = slotHits[0].object;
+        if (!selectedComponent) return;
+        if (selectedComponent.userData.name === slot.userData.accepts) {
+          selectedComponent.position.copy(slot.position);
+          selectedComponent.material.emissive.setHex(0x43e97b);
+          selectedComponent.material.emissiveIntensity = 0.3;
+          selectedComponent = null;
+          slot.visible = false;
+          installed++;
+          updateProgress();
+        } else {
+          const wrong = selectedComponent;
+          wrong.material.emissive.setHex(0xff2200);
+          wrong.material.emissiveIntensity = 0.8;
+          wrongAttempts++;
+          showError(wrongMsg[wrong.userData.name]);
+          setTimeout(() => {
+            if (selectedComponent === wrong) {
+              wrong.material.emissive.setHex(0x6c63ff);
+              wrong.material.emissiveIntensity = 0.7;
+            }
+          }, 400);
+        }
+        return;
+      }
+
+      if (selectedComponent) {
+        selectedComponent.material.emissive.setHex(0x000000);
+        selectedComponent.material.emissiveIntensity = 0;
+        selectedComponent = null;
+      }
+    }
+
+    renderer.domElement.addEventListener('mousedown', (e) => {
+      pointerDownPos.set(e.clientX, e.clientY);
+    });
+    renderer.domElement.addEventListener('mouseup', (e) => {
+      if (Math.abs(e.clientX - pointerDownPos.x) > 4 || Math.abs(e.clientY - pointerDownPos.y) > 4) return;
+      handlePointer(e.clientX, e.clientY);
+    });
+
+    renderer.domElement.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      pointerDownPos.set(t.clientX, t.clientY);
+    }, { passive: true });
+    renderer.domElement.addEventListener('touchend', (e) => {
+      const t = e.changedTouches[0];
+      if (Math.abs(t.clientX - pointerDownPos.x) > 10 || Math.abs(t.clientY - pointerDownPos.y) > 10) return;
+      e.preventDefault();
+      handlePointer(t.clientX, t.clientY);
+    });
+
+    // OrbitControls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 3;
+    controls.maxDistance = 14;
+    controls.maxPolarAngle = Math.PI / 2 + 0.2;
+    controls.target.set(0, 0, 0);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (caseFlashStart !== null) {
+        const t = Math.min((Date.now() - caseFlashStart) / 1200, 1);
+        mat.emissive.setHex(0x6c63ff);
+        mat.emissiveIntensity = Math.sin(t * Math.PI) * 0.9;
+        if (t >= 1) { mat.emissiveIntensity = 0; caseFlashStart = null; }
+      }
+
+      if (orbitAnim) {
+        const t = Math.min((Date.now() - orbitAnim.startTime) / orbitAnim.duration, 1);
+        const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+        const angle = orbitAnim.startAngle + ease * Math.PI * 2;
+        camera.position.set(
+          Math.sin(angle) * orbitAnim.radius,
+          orbitAnim.height,
+          Math.cos(angle) * orbitAnim.radius
+        );
+        camera.lookAt(0, 0, 0);
+        if (t >= 1) {
+          orbitAnim = null;
+          controls.enabled = true;
+          showWinOverlay();
+        }
+      } else {
+        controls.update();
+      }
+
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
