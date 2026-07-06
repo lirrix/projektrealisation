@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Level 5 – CPU Kommandant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --yellow:#FFD600;--blue:#0D47A1;--lightblue:#4FC3F7;
+  --red:#E53935;--green:#43A047;--dark:#0A0A1A;
+  --panel:#1A1A2E;--card:#16213E;--accent:#00BCD4;
+  --white:#FFFFFF;--text:#E8E8F0;
+  --shadow:4px 4px 0px #000;--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Comic Neue',cursive;background:var(--dark);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(0,188,212,.06)1px,transparent 1px),linear-gradient(90deg,rgba(0,188,212,.06)1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;animation:gridPulse 8s ease-in-out infinite;}
+@keyframes gridPulse{0%,100%{opacity:1}50%{opacity:.5}}
+.scanlines{position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06)3px,rgba(0,0,0,.06)4px);pointer-events:none;z-index:1;}
+
+.screen{display:none;min-height:100vh;position:relative;z-index:2;flex-direction:column;align-items:center;}
+.screen.active{display:flex;}
+
+/* HUD */
+.game-hud{width:100%;display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--panel);border-bottom:3px solid var(--accent);position:sticky;top:0;z-index:10;}
+.hud-back{background:var(--yellow);border:2px solid #000;border-radius:8px;padding:8px 16px;font-family:'Bangers',cursive;font-size:18px;cursor:pointer;box-shadow:2px 2px 0 #000;white-space:nowrap;transition:transform .1s;}
+.hud-back:hover{transform:translate(-1px,-1px);}
+.hud-center{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.hud-title{font-family:'Bangers',cursive;font-size:20px;letter-spacing:2px;color:var(--yellow);}
+.hud-bar{width:100%;max-width:260px;height:10px;background:#333;border-radius:5px;border:2px solid #555;overflow:hidden;}
+.hud-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:5px;width:0%;transition:width .4s ease;}
+.hud-score{font-family:'Bangers',cursive;font-size:22px;color:var(--yellow);white-space:nowrap;}
+
+.game-content{flex:1;display:flex;flex-direction:column;align-items:center;padding:24px 20px;gap:20px;max-width:820px;margin:0 auto;width:100%;}
+
+/* PHASE INTRO */
+.phase-card{background:var(--card);border:3px solid var(--accent);border-radius:16px;padding:32px 28px;width:100%;max-width:660px;text-align:center;box-shadow:6px 6px 0 #000;animation:slideUp .4s ease both;}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.phase-card .p-icon{font-size:60px;margin-bottom:12px;}
+.phase-card h2{font-family:'Bangers',cursive;font-size:34px;letter-spacing:3px;color:var(--yellow);text-shadow:2px 2px 0 #000;margin-bottom:10px;}
+.phase-card p{font-size:15px;color:#aaa;line-height:1.7;margin-bottom:24px;}
+.phase-steps{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;}
+.phase-step{background:var(--panel);border:2px solid #444;border-radius:10px;padding:12px 12px;text-align:center;min-width:108px;}
+.phase-step .ps-icon{font-size:28px;margin-bottom:6px;}
+.phase-step .ps-title{font-family:'Bangers',cursive;font-size:15px;color:var(--yellow);letter-spacing:1px;}
+.phase-step .ps-sub{font-size:11px;color:#888;margin-top:2px;}
+
+/* BUTTONS */
+.btn-main{font-family:'Bangers',cursive;font-size:22px;letter-spacing:2px;padding:13px 32px;border:3px solid #000;border-radius:var(--radius);background:var(--yellow);color:#000;cursor:pointer;box-shadow:var(--shadow);transition:transform .1s,box-shadow .1s;display:inline-flex;align-items:center;gap:10px;position:relative;overflow:hidden;}
+.btn-main::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.22)0%,transparent 60%);}
+.btn-main:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 #000;}
+.btn-main:active{transform:translate(2px,2px);box-shadow:2px 2px 0 #000;}
+.btn-cyan{background:var(--lightblue);}
+.btn-green{background:#43A047;color:#fff;border-color:#2E7D32;}
+
+/* QUIZ */
+.q-card{background:var(--card);border:3px solid var(--accent);border-radius:16px;padding:28px;width:100%;box-shadow:6px 6px 0 #000;animation:slideUp .4s ease both;}
+.q-num{font-family:'Bangers',cursive;font-size:14px;letter-spacing:3px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;}
+.q-text{font-size:clamp(17px,4vw,23px);font-weight:700;line-height:1.4;margin-bottom:16px;color:#fff;}
+.q-svg-wrap{display:flex;justify-content:center;margin-bottom:16px;}
+.answers-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:480px){.answers-grid{grid-template-columns:1fr;}}
+.ans-btn{background:var(--panel);border:2px solid #444;border-radius:10px;padding:14px 16px;cursor:pointer;font-family:'Comic Neue',cursive;font-size:15px;font-weight:700;color:var(--text);text-align:left;transition:border-color .15s,background .15s,transform .1s;display:flex;align-items:center;gap:10px;}
+.ans-btn:hover:not(:disabled){border-color:var(--accent);background:rgba(0,188,212,.1);transform:translateX(3px);}
+.ans-btn.correct{background:rgba(67,160,71,.25);border-color:var(--green);color:#A5D6A7;}
+.ans-btn.wrong{background:rgba(229,57,53,.2);border-color:var(--red);color:#EF9A9A;}
+.ans-letter{display:inline-flex;width:28px;height:28px;background:var(--accent);border-radius:50%;align-items:center;justify-content:center;font-family:'Bangers',cursive;font-size:16px;color:#000;flex-shrink:0;}
+.feedback-box{width:100%;border-radius:12px;padding:16px 20px;font-size:14px;line-height:1.6;border:2px solid;animation:slideUp .3s ease both;margin-top:14px;display:none;}
+.feedback-box.show{display:block;}
+.feedback-box.correct{background:rgba(67,160,71,.15);border-color:var(--green);color:#A5D6A7;}
+.feedback-box.wrong{background:rgba(229,57,53,.12);border-color:var(--red);color:#EF9A9A;}
+.feedback-title{font-family:'Bangers',cursive;font-size:20px;margin-bottom:4px;}
+.next-btn{margin-top:14px;background:var(--yellow);border:2px solid #000;border-radius:8px;padding:10px 24px;font-family:'Bangers',cursive;font-size:20px;cursor:pointer;box-shadow:2px 2px 0 #000;transition:transform .1s;display:none;}
+.next-btn:hover{transform:translate(-1px,-1px);}
+.quiz-dots{display:flex;gap:6px;justify-content:center;margin-bottom:4px;}
+.qdot{width:12px;height:12px;border-radius:50%;background:#333;border:2px solid #555;transition:all .2s;}
+.qdot.done{background:var(--green);border-color:#2E7D32;}
+.qdot.active{background:var(--accent);border-color:#0097A7;}
+
+/* QUIZ RESULT */
+.result-card{background:var(--panel);border:3px solid var(--yellow);border-radius:20px;padding:36px 32px;max-width:460px;width:100%;text-align:center;box-shadow:8px 8px 0 #000;animation:slideUp .4s ease both;}
+.result-card .re{font-size:64px;margin-bottom:12px;}
+.result-card h2{font-family:'Bangers',cursive;font-size:36px;letter-spacing:3px;color:var(--yellow);margin-bottom:10px;}
+.result-card p{font-size:16px;line-height:1.6;color:#ccc;margin-bottom:16px;}
+.breakdown{background:rgba(0,0,0,.25);border-radius:10px;padding:14px;margin-bottom:20px;text-align:left;}
+.breakdown h4{font-family:'Bangers',cursive;font-size:16px;color:var(--accent);letter-spacing:1px;margin-bottom:10px;}
+.bdi{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.07);}
+.bdi:last-child{border:none;}
+.bdi .ok{color:var(--green);font-weight:700;}
+.bdi .nok{color:var(--red);}
+
+/* ═══ 3D PLAY SCREEN ═══ */
+#build-screen{background:var(--dark);flex-direction:column;}
+#build-screen .game-hud{position:sticky;top:0;}
+
+.build-3d-layout{
+  display:grid;
+  grid-template-columns:242px 1fr;
+  flex:1;
+  width:100%;
+  height:calc(100vh - 62px);
+  overflow:hidden;
+}
+
+/* Sidebar */
+.build-sidebar{
+  background:var(--panel);
+  border-right:3px solid var(--accent);
+  display:flex;flex-direction:column;
+  overflow-y:auto;
+  padding:12px 10px;
+  gap:8px;
+}
+.sb-title{font-family:'Bangers',cursive;font-size:16px;color:var(--accent);letter-spacing:2px;margin-bottom:4px;padding:0 4px;}
+.comp-item{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card);border:2px solid #444;border-radius:10px;
+  padding:9px 10px;cursor:pointer;
+  transition:border-color .15s,background .15s,transform .1s;
+}
+.comp-item:hover:not(.installed){border-color:var(--lightblue);background:rgba(79,195,247,.08);transform:translateX(2px);}
+.comp-item.installed{border-color:var(--green);background:rgba(67,160,71,.1);cursor:default;opacity:.75;}
+.ci-icon{flex-shrink:0;font-size:22px;width:30px;text-align:center;}
+.ci-info{flex:1;min-width:0;}
+.ci-name{font-family:'Bangers',cursive;font-size:15px;color:var(--yellow);letter-spacing:.5px;line-height:1.2;}
+.ci-desc{font-size:11px;color:#777;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.comp-item.installed .ci-desc{color:var(--green);}
+
+.tip-panel{margin-top:auto;background:rgba(0,188,212,.08);border:1px solid rgba(0,188,212,.3);border-radius:8px;padding:10px;font-size:11px;color:#9ECDD4;line-height:1.6;}
+.tip-panel b{color:var(--accent);}
+
+/* 3D Canvas area */
+.canvas-wrap{
+  position:relative;flex:1;overflow:hidden;
+  background:radial-gradient(ellipse at 30% 30%, #0d1b2a 0%, #0A0A1A 70%);
+}
+#three-canvas{display:block;width:100%;height:100%;touch-action:none;}
+
+.build-toast{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-family:'Comic Neue',cursive;font-size:13px;font-weight:700;padding:10px 22px;border-radius:10px;border:2px solid #900;box-shadow:4px 4px 0 #000;z-index:20;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;}
+.build-toast.on{opacity:1;}
+.canvas-hint{position:absolute;top:12px;right:12px;background:rgba(26,26,46,.9);border:1px solid rgba(0,188,212,.4);border-radius:10px;padding:10px 16px;font-size:13px;color:#aaa;line-height:2.0;pointer-events:none;}
+.canvas-hint b{color:var(--accent);}
+.sel-label{position:absolute;bottom:22px;left:14px;font-family:'Bangers',cursive;font-size:18px;color:var(--yellow);letter-spacing:1px;text-shadow:1px 1px 0 #000;pointer-events:none;min-height:26px;max-width:70%;}
+
+/* Runden-Overlay */
+.round-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(6,8,18,.78);z-index:30;padding:16px;}
+.round-overlay .phase-card{max-width:430px;padding:26px 24px;}
+.round-overlay .p-icon{font-size:48px;}
+.round-overlay h2{font-size:30px;}
+.round-badge{display:inline-block;font-family:'Bangers',cursive;font-size:14px;letter-spacing:2px;color:var(--accent);border:2px solid var(--accent);border-radius:20px;padding:3px 14px;margin-bottom:10px;}
+
+@media(max-width:700px){
+  .build-3d-layout{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+  .build-sidebar{flex-direction:row;overflow-x:auto;overflow-y:hidden;border-right:none;border-bottom:3px solid var(--accent);padding:8px;}
+  .sb-title{display:none;}
+  #comp-list{display:flex;gap:8px;}
+  .comp-item{min-width:158px;flex:0 0 auto;}
+  .tip-panel{display:none;}
+  .canvas-hint{display:none;}
+  .sel-label{font-size:14px;}
+}
+
+/* WIN */
+.win-card{background:var(--panel);border:3px solid var(--yellow);border-radius:20px;padding:36px 32px;max-width:460px;width:100%;text-align:center;box-shadow:8px 8px 0 #000;animation:slideUp .5s ease both;}
+.win-card .we{font-size:72px;margin-bottom:12px;}
+.win-card h2{font-family:'Bangers',cursive;font-size:42px;letter-spacing:4px;color:var(--yellow);text-shadow:3px 3px 0 #000;margin-bottom:6px;}
+.result-stars{font-size:40px;margin:10px 0 16px;display:flex;justify-content:center;gap:8px;}
+.rstar{color:#333;transition:color .3s;}
+.rstar.lit{color:var(--yellow);text-shadow:0 0 12px var(--yellow);animation:starPop .4s cubic-bezier(.17,.67,.45,1.5) both;}
+@keyframes starPop{from{transform:scale(0)}to{transform:scale(1)}}
+.score-row{display:flex;justify-content:center;gap:20px;margin:12px 0 20px;}
+.sc-item .sv{font-family:'Bangers',cursive;font-size:36px;color:var(--accent);}
+.sc-item .sl{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+.win-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.win-btns .btn-main{width:auto;}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="scanlines"></div>
+
+<!-- ══ INTRO ══ -->
+<div class="screen active" id="intro-screen">
+  <div class="game-hud">
+    <button class="hud-back" onclick="goBack()">← VERLASSEN</button>
+    <div class="hud-center"><div class="hud-title">LEVEL 5</div><div class="hud-bar"><div class="hud-fill"></div></div></div>
+    <div class="hud-score">⭐ 0</div>
+  </div>
+  <div class="game-content">
+    <div class="phase-card">
+      <div class="p-icon">🧠</div>
+      <h2>CPU KOMMANDANT</h2>
+      <p>Du bist der Scheduler! Die CPU kann immer nur EINEN Prozess gleichzeitig ausführen — und DU entscheidest, wer als Nächstes dran ist. Beweise erst dein Wissen im Quiz, dann übernimm die 3D-Kommandozentrale: Schick die Prozesse nach FCFS, SJF und Priorität in der richtigen Reihenfolge in die CPU! ⚡</p>
+      <div class="phase-steps">
+        <div class="phase-step"><div class="ps-icon">🧠</div><div class="ps-title">QUIZ</div><div class="ps-sub">5 Fragen</div></div>
+        <div class="phase-step"><div class="ps-icon">📥</div><div class="ps-title">FCFS</div><div class="ps-sub">Runde 1</div></div>
+        <div class="phase-step"><div class="ps-icon">⏱</div><div class="ps-title">SJF</div><div class="ps-sub">Runde 2</div></div>
+        <div class="phase-step"><div class="ps-icon">🚨</div><div class="ps-title">PRIORITÄT</div><div class="ps-sub">Runde 3</div></div>
+      </div>
+      <button class="btn-main" onclick="startQuiz()">▶ SPIELEN</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ QUIZ ══ -->
+<div class="screen" id="quiz-screen">
+  <div class="game-hud">
+    <button class="hud-back" onclick="goBack()">← VERLASSEN</button>
+    <div class="hud-center"><div class="hud-title" id="hq-title">FRAGE 1 VON 5</div><div class="hud-bar"><div class="hud-fill" id="hq-fill"></div></div></div>
+    <div class="hud-score" id="hq-score">⭐ 0</div>
+  </div>
+  <div class="game-content">
+    <div class="quiz-dots" id="quiz-dots"></div>
+    <div class="q-card">
+      <div class="q-num" id="q-num">FRAGE 1 VON 5</div>
+      <div class="q-svg-wrap" id="q-svg"></div>
+      <div class="q-text" id="q-text"></div>
+      <div class="answers-grid" id="answers"></div>
+      <div class="feedback-box" id="feedback-box"></div>
+      <button class="next-btn" id="next-btn" onclick="nextQ()">WEITER →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ QUIZ RESULT ══ -->
+<div class="screen" id="qresult-screen">
+  <div class="game-hud">
+    <button class="hud-back" onclick="goBack()">← VERLASSEN</button>
+    <div class="hud-center"><div class="hud-title">QUIZ ABGESCHLOSSEN</div></div>
+    <div class="hud-score" id="hqr-score">⭐ 0</div>
+  </div>
+  <div class="game-content">
+    <div class="result-card">
+      <div class="re" id="qr-emoji">🎉</div>
+      <h2 id="qr-title">SUPER!</h2>
+      <p id="qr-text"></p>
+      <div class="breakdown" id="qr-bd"></div>
+      <button class="btn-main" onclick="startBuild()">🧠 ZUR KOMMANDOZENTRALE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 3D PLAY ══ -->
+<div class="screen" id="build-screen">
+  <div class="game-hud">
+    <button class="hud-back" onclick="goBack()">← VERLASSEN</button>
+    <div class="hud-center"><div class="hud-title" id="hb-title">CPU-ZENTRALE</div><div class="hud-bar"><div class="hud-fill" id="hb-fill" style="width:33%"></div></div></div>
+    <div class="hud-score" id="hb-score">⭐ 0</div>
+  </div>
+  <div class="build-3d-layout">
+    <div class="build-sidebar" id="build-sidebar">
+      <div class="sb-title" id="sb-title">🗂 READY QUEUE</div>
+      <div id="comp-list"></div>
+      <div class="tip-panel" id="tip-panel"><b>💡 Tipp:</b><br>Klicke den Prozess an (in der Liste oder direkt in 3D), der laut Regel als Nächstes in die CPU darf.</div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="three-canvas"></canvas>
+      <div class="canvas-hint"><b>🖱 Ziehen</b> = drehen<br><b>🖲 Scrollen</b> = zoomen<br><b>👆 Klick</b> = Prozess wählen</div>
+      <div class="sel-label" id="sel-label"></div>
+      <div class="build-toast" id="build-toast"></div>
+      <div class="round-overlay" id="round-overlay" style="display:none">
+        <div class="phase-card">
+          <div class="round-badge" id="ro-badge">RUNDE 1 / 3</div>
+          <div class="p-icon" id="ro-icon">📥</div>
+          <h2 id="ro-title">FCFS</h2>
+          <p id="ro-text"></p>
+          <button class="btn-main" onclick="beginRound()">▶ LOS!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WIN ══ -->
+<div class="screen" id="win-screen">
+  <div class="game-hud">
+    <button class="hud-back" onclick="goBack()">← VERLASSEN</button>
+    <div class="hud-center"><div class="hud-title">LEVEL ABGESCHLOSSEN!</div></div>
+    <div class="hud-score" id="hw-score">⭐ 0</div>
+  </div>
+  <div class="game-content">
+    <div class="win-card">
+      <div class="we">🏆</div>
+      <h2>PERFEKT GEPLANT!</h2>
+      <div class="result-stars"><span class="rstar" id="rs0">★</span><span class="rstar" id="rs1">★</span><span class="rstar" id="rs2">★</span></div>
+      <div class="score-row">
+        <div class="sc-item"><div class="sv" id="w-pts">0</div><div class="sl">Punkte</div></div>
+        <div class="sc-item"><div class="sv" id="w-cor">0/5</div><div class="sl">Quiz ✓</div></div>
+        <div class="sc-item"><div class="sv" id="w-err">0</div><div class="sl">Fehler</div></div>
+      </div>
+      <div class="breakdown">
+        <h4>📋 ZUSAMMENFASSUNG</h4>
+        <div class="bdi"><span>Quiz (×100 pro richtige Frage)</span><span class="ok" id="wb-q">+500</span></div>
+        <div class="bdi"><span>Prozesse eingeplant (14 × 40)</span><span class="ok" id="wb-p">+560</span></div>
+        <div class="bdi"><span>Fehlerbonus</span><span id="wb-b" class="ok">+200</span></div>
+      </div>
+      <div class="win-btns">
+        <button class="btn-main btn-cyan" onclick="goBack()">← MENÜ</button>
+        <button class="btn-main btn-green" onclick="finishLevel()">WEITER ▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════════
+// QUIZ-SVGs
+// ══════════════════════════════════════════════════════
+const QSVG={
+  sched:`<svg width="130" height="80" viewBox="0 0 130 80"><rect x="6" y="10" width="22" height="16" rx="3" fill="#AB47BC" stroke="#000"/><text x="17" y="21" text-anchor="middle" font-family="Bangers,cursive" font-size="9" fill="#fff">P1</text><rect x="6" y="32" width="22" height="16" rx="3" fill="#29B6F6" stroke="#000"/><text x="17" y="43" text-anchor="middle" font-family="Bangers,cursive" font-size="9" fill="#fff">P2</text><rect x="6" y="54" width="22" height="16" rx="3" fill="#FF7043" stroke="#000"/><text x="17" y="65" text-anchor="middle" font-family="Bangers,cursive" font-size="9" fill="#fff">P3</text><path d="M32 18 Q52 18 62 34" stroke="#00BCD4" stroke-width="2" fill="none"/><path d="M32 40 L58 40" stroke="#00BCD4" stroke-width="2" fill="none"/><path d="M32 62 Q52 62 62 46" stroke="#00BCD4" stroke-width="2" fill="none"/><polygon points="62,40 55,36 55,44" fill="#00BCD4"/><rect x="66" y="20" width="44" height="40" rx="4" fill="#222" stroke="#FFD600" stroke-width="2.5"/><rect x="74" y="28" width="28" height="24" rx="2" fill="#444"/><text x="88" y="44" text-anchor="middle" font-family="Bangers,cursive" font-size="11" fill="#00BCD4">CPU</text><text x="88" y="72" text-anchor="middle" font-family="Comic Neue,cursive" font-size="7" fill="#888" font-weight="bold">Scheduler entscheidet!</text></svg>`,
+  fcfs:`<svg width="140" height="70" viewBox="0 0 140 70"><rect x="96" y="16" width="38" height="38" rx="4" fill="#222" stroke="#FFD600" stroke-width="2.5"/><text x="115" y="40" text-anchor="middle" font-family="Bangers,cursive" font-size="11" fill="#00BCD4">CPU</text>${[0,1,2].map(i=>`<rect x="${8+i*28}" y="22" width="24" height="26" rx="3" fill="${['#66BB6A','#29B6F6','#AB47BC'][i]}" stroke="#000" stroke-width="1.5"/><text x="${20+i*28}" y="34" text-anchor="middle" font-family="Bangers,cursive" font-size="8" fill="#fff">P${i+1}</text><text x="${20+i*28}" y="44" text-anchor="middle" font-family="Arial" font-size="6" fill="#fff">t=${i*3+1}</text>`).join('')}<polygon points="94,35 86,30 86,40" fill="#00BCD4"/><text x="50" y="64" text-anchor="middle" font-family="Comic Neue,cursive" font-size="8" fill="#888" font-weight="bold">→ Reihenfolge der Ankunft →</text></svg>`,
+  sjf:`<svg width="130" height="76" viewBox="0 0 130 76"><rect x="8" y="8" width="90" height="12" rx="3" fill="#EF5350" stroke="#000"/><text x="104" y="18" font-family="Arial" font-size="8" fill="#EF9A9A">9 ms</text><rect x="8" y="28" width="50" height="12" rx="3" fill="#FFCA28" stroke="#000"/><text x="64" y="38" font-family="Arial" font-size="8" fill="#FFE082">5 ms</text><rect x="8" y="48" width="18" height="12" rx="3" fill="#66BB6A" stroke="#000"/><text x="32" y="58" font-family="Arial" font-size="8" fill="#A5D6A7">1 ms ⭐</text><text x="65" y="72" text-anchor="middle" font-family="Comic Neue,cursive" font-size="8" fill="#888" font-weight="bold">SJF: Der Kürzeste gewinnt!</text></svg>`,
+  rr:`<svg width="110" height="90" viewBox="0 0 110 90"><circle cx="55" cy="42" r="30" fill="none" stroke="#00BCD4" stroke-width="2" stroke-dasharray="5 4"/><rect x="43" y="4" width="24" height="16" rx="3" fill="#AB47BC" stroke="#000"/><text x="55" y="15" text-anchor="middle" font-family="Bangers,cursive" font-size="8" fill="#fff">P1</text><rect x="76" y="52" width="24" height="16" rx="3" fill="#29B6F6" stroke="#000"/><text x="88" y="63" text-anchor="middle" font-family="Bangers,cursive" font-size="8" fill="#fff">P2</text><rect x="10" y="52" width="24" height="16" rx="3" fill="#66BB6A" stroke="#000"/><text x="22" y="63" text-anchor="middle" font-family="Bangers,cursive" font-size="8" fill="#fff">P3</text><polygon points="85,26 78,22 80,31" fill="#00BCD4"/><rect x="41" y="32" width="28" height="20" rx="3" fill="#222" stroke="#FFD600" stroke-width="2"/><text x="55" y="45" text-anchor="middle" font-family="Bangers,cursive" font-size="8" fill="#FFD600">⏱ 10ms</text><text x="55" y="86" text-anchor="middle" font-family="Comic Neue,cursive" font-size="8" fill="#888" font-weight="bold">Jeder reihum eine Zeitscheibe</text></svg>`,
+  ctx:`<svg width="130" height="80" viewBox="0 0 130 80"><rect x="6" y="12" width="42" height="44" rx="4" fill="#16213E" stroke="#AB47BC" stroke-width="2"/><text x="27" y="28" text-anchor="middle" font-family="Bangers,cursive" font-size="10" fill="#CE93D8">P1</text><text x="27" y="42" text-anchor="middle" font-family="Arial" font-size="6" fill="#888">Register</text><text x="27" y="51" text-anchor="middle" font-family="Arial" font-size="6" fill="#888">PC, Stack…</text><rect x="82" y="12" width="42" height="44" rx="4" fill="#16213E" stroke="#29B6F6" stroke-width="2"/><text x="103" y="28" text-anchor="middle" font-family="Bangers,cursive" font-size="10" fill="#81D4FA">P2</text><text x="103" y="42" text-anchor="middle" font-family="Arial" font-size="6" fill="#888">Register</text><text x="103" y="51" text-anchor="middle" font-family="Arial" font-size="6" fill="#888">PC, Stack…</text><path d="M50 26 Q65 20 80 26" stroke="#FFD600" stroke-width="2" fill="none"/><polygon points="80,26 72,23 74,31" fill="#FFD600"/><text x="65" y="14" text-anchor="middle" font-family="Arial" font-size="7" fill="#FFD600" font-weight="bold">sichern → laden</text><text x="65" y="74" text-anchor="middle" font-family="Comic Neue,cursive" font-size="8" fill="#888" font-weight="bold">Kontextwechsel = Umschalten</text></svg>`,
+  preempt:`<svg width="130" height="70" viewBox="0 0 130 70"><rect x="8" y="20" width="70" height="16" rx="3" fill="#29B6F6" stroke="#000"/><text x="43" y="31" text-anchor="middle" font-family="Bangers,cursive" font-size="8" fill="#fff">P1 läuft…</text><path d="M84 8 L78 26 L86 24 L78 44" stroke="#FFD600" stroke-width="3" fill="none" stroke-linejoin="round"/><rect x="92" y="20" width="32" height="16" rx="3" fill="#E53935" stroke="#000"/><text x="108" y="31" text-anchor="middle" font-family="Bangers,cursive" font-size="7" fill="#fff">P2 !!!</text><text x="65" y="60" text-anchor="middle" font-family="Comic Neue,cursive" font-size="8" fill="#888" font-weight="bold">Das OS darf unterbrechen ⚡</text></svg>`,
+  prio:`<svg width="130" height="86" viewBox="0 0 130 86"><rect x="50" y="14" width="30" height="52" rx="3" fill="#333" stroke="#555"/><rect x="14" y="34" width="30" height="32" rx="3" fill="#333" stroke="#555"/><rect x="86" y="46" width="30" height="20" rx="3" fill="#333" stroke="#555"/><rect x="53" y="2" width="24" height="18" rx="3" fill="#E53935" stroke="#000"/><text x="65" y="15" text-anchor="middle" font-family="Bangers,cursive" font-size="9" fill="#fff">1</text><rect x="17" y="22" width="24" height="18" rx="3" fill="#FFCA28" stroke="#000"/><text x="29" y="35" text-anchor="middle" font-family="Bangers,cursive" font-size="9" fill="#000">2</text><rect x="89" y="34" width="24" height="18" rx="3" fill="#66BB6A" stroke="#000"/><text x="101" y="47" text-anchor="middle" font-family="Bangers,cursive" font-size="9" fill="#fff">3</text><text x="65" y="80" text-anchor="middle" font-family="Comic Neue,cursive" font-size="8" fill="#888" font-weight="bold">Höchste Priorität zuerst!</text></svg>`,
+};
+
+// ══════════════════════════════════════════════════════
+// QUIZ DATA (7 Fragen, 5 werden zufällig gezogen)
+// ══════════════════════════════════════════════════════
+const QUIZ=[
+  {svg:'sched',q:'Was macht der CPU-Scheduler des Betriebssystems?',a:[{t:'Er kühlt die CPU herunter',c:false},{t:'Er verteilt die Rechenzeit der CPU auf die Prozesse',c:true},{t:'Er speichert Prozesse dauerhaft auf der SSD',c:false},{t:'Er erhöht die Taktfrequenz',c:false}],fb:'✅ Der Scheduler entscheidet, welcher Prozess wann und wie lange die CPU bekommt — er ist der "Verkehrspolizist" des Betriebssystems.',wb:'❌ Der Scheduler verteilt die knappe CPU-Zeit auf alle wartenden Prozesse.'},
+  {svg:'fcfs',q:'Nach welchem Prinzip arbeitet FCFS (First Come, First Served)?',a:[{t:'Wichtigster Prozess zuerst',c:false},{t:'Kürzester Prozess zuerst',c:false},{t:'Prozesse in Ankunftsreihenfolge',c:true},{t:'Zufällige Reihenfolge',c:false}],fb:'✅ FCFS = klassische Warteschlange wie an der Supermarktkasse: Wer zuerst kommt, mahlt zuerst. Einfach, aber lange Jobs blockieren alle dahinter ("Convoy-Effekt").',wb:'❌ FCFS arbeitet die Prozesse strikt in ihrer Ankunftsreihenfolge ab — wie an der Kasse.'},
+  {svg:'sjf',q:'Welchen Prozess wählt SJF (Shortest Job First) als nächstes aus?',a:[{t:'Den mit der kürzesten Rechenzeit',c:true},{t:'Den ältesten Prozess',c:false},{t:'Den mit der höchsten Priorität',c:false},{t:'Den zuletzt angekommenen',c:false}],fb:'✅ SJF lässt kurze Jobs zuerst durchflutschen — das minimiert die durchschnittliche Wartezeit aller Prozesse.',wb:'❌ SJF wählt immer den Job mit der kürzesten (erwarteten) Rechenzeit — kurze Jobs zuerst!'},
+  {svg:'rr',q:'Was ist das "Quantum" beim Round-Robin-Scheduling?',a:[{t:'Die maximale RAM-Menge pro Prozess',c:false},{t:'Eine feste Zeitscheibe pro Prozess',c:true},{t:'Die Anzahl der CPU-Kerne',c:false},{t:'Ein Quantencomputer-Chip',c:false}],fb:'✅ Beim Round Robin bekommt jeder Prozess reihum eine feste Zeitscheibe (z. B. 10 ms). Ist sie abgelaufen, kommt der nächste dran — fair für alle!',wb:'❌ Das Quantum ist die feste Zeitscheibe, die jeder Prozess reihum bekommt.'},
+  {svg:'ctx',q:'Was passiert bei einem Kontextwechsel (Context Switch)?',a:[{t:'Die CPU wird neu gestartet',c:false},{t:'Der Zustand des alten Prozesses wird gesichert, der des neuen geladen',c:true},{t:'Der Prozess wird gelöscht',c:false},{t:'Der Monitor wechselt das Bild',c:false}],fb:'✅ Register, Programmzähler & Co. des laufenden Prozesses werden gesichert und der Zustand des nächsten geladen. Das kostet Zeit — deshalb ist zu häufiges Wechseln ineffizient (Overhead).',wb:'❌ Beim Kontextwechsel wird der Zustand des laufenden Prozesses gesichert und der des nächsten geladen.'},
+  {svg:'preempt',q:'Was bedeutet "präemptives" Scheduling?',a:[{t:'Das OS kann laufende Prozesse unterbrechen',c:true},{t:'Prozesse laufen immer bis zum Ende',c:false},{t:'Es gibt keine Prioritäten',c:false},{t:'Es läuft nur ein einziger Prozess',c:false}],fb:'✅ Präemptiv = das Betriebssystem darf einem Prozess die CPU jederzeit entziehen. So bleibt das System reaktionsschnell — deine Maus ruckelt nicht, nur weil ein Update läuft.',wb:'❌ Präemptiv heißt: Das OS kann einen laufenden Prozess unterbrechen und die CPU neu vergeben.'},
+  {svg:'prio',q:'Welche Gefahr gibt es beim reinen Prioritäts-Scheduling?',a:[{t:'Die CPU überhitzt',c:false},{t:'Starvation: unwichtige Prozesse kommen nie dran',c:true},{t:'Der RAM wird gelöscht',c:false},{t:'Prozesse laufen doppelt',c:false}],fb:'✅ Genau — das nennt man Starvation ("Verhungern"). Lösung: Aging — je länger ein Prozess wartet, desto mehr steigt seine Priorität.',wb:'❌ Die Gefahr heißt Starvation: Prozesse mit niedriger Priorität verhungern. Abhilfe schafft "Aging".'},
+];
+
+// ══════════════════════════════════════════════════════
+// SCHEDULING-RUNDEN
+// ══════════════════════════════════════════════════════
+const ROUNDS=[
+  {id:'fcfs',short:'FCFS',icon:'📥',title:'FCFS',
+   rule:'Wer zuerst ankommt, rechnet zuerst!',
+   text:'First Come, First Served: Die CPU arbeitet die Prozesse strikt nach Ankunftszeit ab — wie an der Supermarktkasse. Klicke die Prozesse in der Reihenfolge ihrer Ankunft an!',
+   tip:'<b>📥 FCFS:</b><br>Schau auf die <b>Ankunftszeit</b> — der Prozess, der am frühesten angekommen ist, darf als Nächstes in die CPU.',
+   procs:[
+     {id:'musik',  name:'Musik-Player',emoji:'🎵',color:0xAB47BC,arr:1,burst:2},
+     {id:'browser',name:'Browser',     emoji:'🌐',color:0x29B6F6,arr:4,burst:3},
+     {id:'game',   name:'Spiel',       emoji:'🎮',color:0xFF7043,arr:6,burst:4},
+     {id:'update', name:'Update',      emoji:'📦',color:0x8D6E63,arr:9,burst:3},
+   ]},
+  {id:'sjf',short:'SJF',icon:'⏱',title:'SHORTEST JOB FIRST',
+   rule:'Der kürzeste Job zuerst!',
+   text:'Shortest Job First: Alle Prozesse warten schon. Die CPU nimmt immer den Job mit der KÜRZESTEN Rechenzeit zuerst — so sinkt die durchschnittliche Wartezeit. Sortier sie richtig ein!',
+   tip:'<b>⏱ SJF:</b><br>Schau auf die <b>Dauer (Burst-Zeit)</b> — es läuft immer der kürzeste noch wartende Job zuerst.',
+   procs:[
+     {id:'chat', name:'Chat-App',    emoji:'💬',color:0x66BB6A,arr:0,burst:1},
+     {id:'mail', name:'E-Mail',      emoji:'📧',color:0x29B6F6,arr:0,burst:2},
+     {id:'foto', name:'Foto-Filter', emoji:'🖼',color:0xFFCA28,arr:0,burst:4},
+     {id:'code', name:'Compiler',    emoji:'🛠',color:0xEC407A,arr:0,burst:6},
+     {id:'video',name:'Video-Render',emoji:'🎬',color:0xEF5350,arr:0,burst:9},
+   ]},
+  {id:'prio',short:'PRIO',icon:'🚨',title:'PRIORITÄT',
+   rule:'Höchste Priorität zuerst (1 = am wichtigsten)!',
+   text:'Prioritäts-Scheduling: Jeder Prozess hat eine Wichtigkeit — Priorität 1 ist die höchste. Ein System-Alarm schlägt den Backup-Job! Plane die Prozesse nach ihrer Priorität ein.',
+   tip:'<b>🚨 PRIORITÄT:</b><br>Kleinste Zahl = wichtigster Prozess. <b>Priorität 1</b> kommt vor Priorität 2 usw. Achtung: Genau so entsteht "Starvation" für die Letzten!',
+   procs:[
+     {id:'crash', name:'System-Alarm',    emoji:'🚨',color:0xE53935,prio:1,burst:2},
+     {id:'input', name:'Tastatur-Eingabe',emoji:'⌨️',color:0x00E5FF,prio:2,burst:3},
+     {id:'stream',name:'Musik-Stream',    emoji:'🎧',color:0xAB47BC,prio:3,burst:4},
+     {id:'scan',  name:'Virenscan',       emoji:'🛡',color:0x66BB6A,prio:4,burst:3},
+     {id:'backup',name:'Backup',          emoji:'💾',color:0x8D6E63,prio:5,burst:2},
+   ]},
+];
+function roundKey(r,p){return r.id==='fcfs'?p.arr:(r.id==='sjf'?p.burst:p.prio);}
+function statTxt(r,p){return r.id==='fcfs'?('Ankunft: '+p.arr+' ms'):(r.id==='sjf'?('Dauer: '+p.burst+' ms'):('Priorität '+p.prio));}
+const TOTAL_PROCS=ROUNDS.reduce((s,r)=>s+r.procs.length,0);
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let quizPool=[],qIdx=0,qCorrect=0,qAnswered=[];
+let roundIdx=0,decided=0,doneCount=0,totalErrors=0,busy=false,overlayOn=false,rgbOn=false;
+let phase='play';
+
+// ══════════════════════════════════════════════════════
+// SCREENS + LINKS (nicht ändern!)
+// ══════════════════════════════════════════════════════
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function goBack(){window.location.href='https://luisgetlost.me';}
+function finishLevel(){window.location.href='https://luisgetlost.me';}
+
+// ══════════════════════════════════════════════════════
+// QUIZ
+// ══════════════════════════════════════════════════════
+function startQuiz(){
+  quizPool=[...QUIZ].sort(()=>Math.random()-.5).slice(0,5);
+  qIdx=0;qCorrect=0;qAnswered=[];
+  showScreen('quiz-screen');
+  buildDots();renderQ();
+}
+function buildDots(){
+  document.getElementById('quiz-dots').innerHTML=quizPool.map((_,i)=>`<div class="qdot${i===0?' active':''}" id="qd${i}"></div>`).join('');
+}
+function renderQ(){
+  const q=quizPool[qIdx],n=qIdx+1,tot=quizPool.length;
+  document.getElementById('hq-title').textContent=`FRAGE ${n} VON ${tot}`;
+  document.getElementById('hq-fill').style.width=((n-1)/tot*100)+'%';
+  document.getElementById('hq-score').textContent='⭐ '+(qCorrect*100);
+  document.getElementById('q-num').textContent=`FRAGE ${n} VON ${tot}`;
+  document.getElementById('q-svg').innerHTML=`<div style="padding:6px 0">${QSVG[q.svg]||''}</div>`;
+  document.getElementById('q-text').textContent=q.q;
+  document.getElementById('feedback-box').className='feedback-box';
+  document.getElementById('feedback-box').innerHTML='';
+  document.getElementById('next-btn').style.display='none';
+  const letters='ABCD';
+  const sh=[...q.a].sort(()=>Math.random()-.5);
+  document.getElementById('answers').innerHTML=sh.map((a,i)=>`<button class="ans-btn" onclick="pickA(this,${a.c})"><span class="ans-letter">${letters[i]}</span>${a.t}</button>`).join('');
+}
+function pickA(btn,correct){
+  document.querySelectorAll('.ans-btn').forEach(b=>b.disabled=true);
+  btn.classList.add(correct?'correct':'wrong');
+  if(!correct){
+    const rightTxt=quizPool[qIdx].a.find(a=>a.c).t;
+    document.querySelectorAll('.ans-btn').forEach(b=>{if(b.textContent.trim().slice(1).trim()===rightTxt)b.classList.add('correct');});
+  }
+  const fb=document.getElementById('feedback-box');
+  fb.innerHTML=`<div class="feedback-title">${correct?'✅ RICHTIG!':'❌ FALSCH!'}</div>${correct?quizPool[qIdx].fb:quizPool[qIdx].wb}`;
+  fb.className='feedback-box show '+(correct?'correct':'wrong');
+  if(correct)qCorrect++;
+  qAnswered.push(correct);
+  document.getElementById('next-btn').style.display='block';
+  document.getElementById('qd'+qIdx).classList.remove('active');
+  document.getElementById('qd'+qIdx).classList.add('done');
+}
+function nextQ(){
+  qIdx++;
+  if(qIdx>=quizPool.length){showQR();return;}
+  document.getElementById('qd'+qIdx).classList.add('active');
+  renderQ();
+}
+function showQR(){
+  const p=qCorrect/quizPool.length;
+  document.getElementById('qr-emoji').textContent=p>=.8?'🎉':p>=.6?'👍':'📚';
+  document.getElementById('qr-title').textContent=p>=.8?'SUPER!':p>=.6?'GUT GEMACHT!':'WEITER ÜBEN!';
+  document.getElementById('qr-text').textContent=`${qCorrect} von ${quizPool.length} Fragen richtig! Jetzt übernimmst du die CPU-Kommandozentrale — plane die Prozesse in der richtigen Reihenfolge ein.`;
+  document.getElementById('hqr-score').textContent='⭐ '+(qCorrect*100);
+  document.getElementById('qr-bd').innerHTML='<h4>📋 DEINE ANTWORTEN</h4>'+quizPool.map((q,i)=>`<div class="bdi"><span style="font-size:11px">${q.q.substring(0,50)}…</span><span class="${qAnswered[i]?'ok':'nok'}">${qAnswered[i]?'✔ Richtig':'✗ Falsch'}</span></div>`).join('');
+  showScreen('qresult-screen');
+}
+
+// ══════════════════════════════════════════════════════
+// AUDIO
+// ══════════════════════════════════════════════════════
+let AC=null;
+function actx(){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();}catch(e){}return AC;}
+function tone(f1,f2,vol,type,dur){const ctx=actx();if(!ctx)return;try{
+  const d=dur||.35;const o=ctx.createOscillator(),g=ctx.createGain();
+  o.connect(g);g.connect(ctx.destination);o.type=type||'sine';
+  const t0=ctx.currentTime;
+  o.frequency.setValueAtTime(f1,t0);o.frequency.linearRampToValueAtTime(f2,t0+d*.45);
+  g.gain.setValueAtTime(vol,t0);g.gain.exponentialRampToValueAtTime(.001,t0+d);
+  o.start(t0);o.stop(t0+d+.02);
+}catch(e){}}
+function noiseWhoosh(dur,vol){const ctx=actx();if(!ctx)return;try{
+  const len=Math.floor(ctx.sampleRate*dur),buf=ctx.createBuffer(1,len,ctx.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.min(1,i/(len*.3))*(1-i/len);
+  const s=ctx.createBufferSource();s.buffer=buf;
+  const f=ctx.createBiquadFilter();f.type='lowpass';
+  f.frequency.setValueAtTime(240,ctx.currentTime);
+  f.frequency.linearRampToValueAtTime(1500,ctx.currentTime+dur*.7);
+  const g=ctx.createGain();g.gain.value=vol;
+  s.connect(f);f.connect(g);g.connect(ctx.destination);s.start();
+}catch(e){}}
+function snapSound(){tone(480,760,.15,'sine',.22);setTimeout(()=>tone(980,980,.07,'triangle',.12),80);}
+function errSound(){tone(170,90,.13,'sawtooth',.22);}
+
+// ══════════════════════════════════════════════════════
+// TWEENS
+// ══════════════════════════════════════════════════════
+const tweens=[];
+const easeIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const easeOut=t=>1-Math.pow(1-t,3);
+function tw(o){o._t=0;o.dur=o.dur||600;tweens.push(o);return o;}
+function stepTweens(dt){
+  for(let i=tweens.length-1;i>=0;i--){
+    const w=tweens[i];w._t+=dt;
+    const k=Math.min(1,w._t/w.dur);
+    const e=(w.ease||easeIO)(k);
+    if(w.onU)w.onU(e,k);
+    if(k>=1){tweens.splice(i,1);if(w.onC)w.onC();}
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// THREE.JS — GLOBALS
+// ══════════════════════════════════════════════════════
+let scene,camera,renderer3,raf=null,evBound=false;
+let procObjs={},coreMats=[],rgbMats=[];
+let ringMat=null,dockMat=null,dockRing=null,beamMat=null;
+let ganttCursor=-2.68,simT=0,lastT=0;
+const GS=0.090,GGAP=0.012;
+const orb={t:-0.55,p:0.42,r:8.2};
+const camTarget=new THREE.Vector3(-0.55,-0.35,0.1);
+const DOCK=new THREE.Vector3(0.9,0.9,0);
+const _ray=new THREE.Raycaster(),_m2=new THREE.Vector2();
+
+function M(color,met,rough,opts){return new THREE.MeshStandardMaterial(Object.assign({color:color,metalness:met,roughness:rough},opts||{}));}
+function staticGlowM(color,i){const m=M(color,.4,.4,{emissive:color,emissiveIntensity:i});m.userData.keep=true;return m;}
+function bx(p,sx,sy,sz,x,y,z,mat,noCast){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat);
+  m.position.set(x,y,z);
+  if(!noCast){m.castShadow=true;m.receiveShadow=true;}
+  p.add(m);return m;
+}
+function cy(p,r,h,x,y,z,mat,axis,seg){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg||20),mat);
+  if(axis==='z')m.rotation.x=Math.PI/2;else if(axis==='x')m.rotation.z=Math.PI/2;
+  m.position.set(x,y,z);m.castShadow=true;p.add(m);return m;
+}
+
+// ── Canvas-Texturen & Sprites ─────────────────────────
+function texLabel(title,sub,opts){
+  opts=opts||{};
+  const W=512,H=sub?150:110;
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  x.fillStyle=opts.bg||'rgba(10,12,26,.92)';
+  if(x.roundRect){x.beginPath();x.roundRect(6,6,W-12,H-12,22);x.fill();}else{x.fillRect(6,6,W-12,H-12);}
+  x.strokeStyle=opts.border||'rgba(0,188,212,.75)';x.lineWidth=5;
+  if(x.roundRect){x.beginPath();x.roundRect(6,6,W-12,H-12,22);x.stroke();}else{x.strokeRect(6,6,W-12,H-12);}
+  x.textAlign='center';
+  x.fillStyle=opts.col||'#FFD600';
+  x.font=(opts.tSize||54)+'px Bangers, cursive';
+  x.fillText(title,W/2,sub?68:72);
+  if(sub){x.fillStyle=opts.sub||'#9fd8e8';x.font='30px "Comic Neue", cursive';x.fillText(sub,W/2,120);}
+  const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t;
+}
+function makeSprite(title,sub,h,opts){
+  const t=texLabel(title,sub,opts);
+  const asp=t.image.width/t.image.height;
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));
+  s.scale.set(h*asp,h,1);s.renderOrder=50;
+  return s;
+}
+function planeLabel(w,h,title,sub,opts){
+  const t=texLabel(title,sub,opts);
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,transparent:true}));
+  return m;
+}
+let ringTex=null;
+function getRingTex(){
+  if(ringTex)return ringTex;
+  const c=document.createElement('canvas');c.width=c.height=128;
+  const x=c.getContext('2d');x.strokeStyle='#fff';x.lineWidth=10;
+  x.beginPath();x.arc(64,64,50,0,Math.PI*2);x.stroke();
+  ringTex=new THREE.CanvasTexture(c);return ringTex;
+}
+
+// ── Effekte ───────────────────────────────────────────
+function flashRing(pos,color){
+  const m=new THREE.SpriteMaterial({map:getRingTex(),color:color||0xFFD600,transparent:true,opacity:.95,depthTest:false});
+  const s=new THREE.Sprite(m);s.position.copy(pos);s.renderOrder=60;scene.add(s);
+  tw({dur:520,ease:easeOut,onU:(e,k)=>{const sc=.25+1.55*e;s.scale.set(sc,sc,1);m.opacity=.95*(1-k);},onC:()=>{scene.remove(s);m.dispose();}});
+}
+function sparks(pos,color,n){
+  n=n||16;
+  const g=new THREE.BufferGeometry();
+  const P=new Float32Array(n*3),dirs=[];
+  for(let i=0;i<n;i++){
+    P[i*3]=pos.x;P[i*3+1]=pos.y;P[i*3+2]=pos.z;
+    const a=Math.random()*Math.PI*2,b=(Math.random()-.2)*Math.PI*.9,r=.5+Math.random()*.85;
+    dirs.push(new THREE.Vector3(Math.cos(a)*Math.cos(b)*r,Math.sin(b)*r+.3,Math.sin(a)*Math.cos(b)*r));
+  }
+  g.setAttribute('position',new THREE.BufferAttribute(P,3));
+  const m=new THREE.PointsMaterial({color:color||0xFFD600,size:.07,transparent:true,opacity:1,depthWrite:false});
+  const pts=new THREE.Points(g,m);pts.renderOrder=55;scene.add(pts);
+  tw({dur:750,ease:easeOut,onU:(e,k)=>{
+    const a=g.attributes.position.array;
+    for(let i=0;i<n;i++){
+      a[i*3]=pos.x+dirs[i].x*e;
+      a[i*3+1]=pos.y+dirs[i].y*e-.35*k*k;
+      a[i*3+2]=pos.z+dirs[i].z*e;
+    }
+    g.attributes.position.needsUpdate=true;m.opacity=1-k;
+  },onC:()=>{scene.remove(pts);g.dispose();m.dispose();}});
+}
+function eachMat(g,fn){g.traverse(c=>{if(c.isMesh&&c.material&&c.material.emissive&&!c.material.userData.keep)fn(c.material);});}
+function setGlow(g,hex,i){if(!g)return;eachMat(g,m=>{m.emissive.setHex(hex);m.emissiveIntensity=i;});}
+function shake(g){
+  if(!g)return;
+  const px=g.position.x;
+  tw({dur:380,ease:t=>t,onU:(e,k)=>{g.position.x=px+Math.sin(k*22)*.06*(1-k);},onC:()=>{g.position.x=px;}});
+}
+function flyTo(g,to,dur,onDone){
+  g.userData.flying=true;
+  const from=g.position.clone();
+  const mid=from.clone().lerp(to,.5);
+  mid.y=Math.max(from.y,to.y)+0.9;
+  const q0=g.quaternion.clone();
+  const q1=new THREE.Quaternion();
+  tw({dur:dur||800,ease:easeIO,onU:e=>{
+    const a=from.clone().lerp(mid,e);
+    const b=mid.clone().lerp(to,e);
+    g.position.copy(a.lerp(b,e));
+    g.quaternion.copy(q0).slerp(q1,e);
+  },onC:()=>{
+    g.position.copy(to);g.quaternion.copy(q1);
+    if(onDone)onDone();
+  }});
+}
+
+// ══════════════════════════════════════════════════════
+// SZENE: CPU-ZENTRALE, QUEUE, FERTIG-STAPEL, GANTT
+// ══════════════════════════════════════════════════════
+function buildScene(){
+  const dark=M(0x14171e,.5,.45);
+  const silver=M(0xC3CAD6,.8,.28);
+  const gold=M(0xE0B84A,.95,.15);
+
+  // ── CPU-Podest ──
+  bx(scene,1.7,1.0,1.7,0.9,-1.37,0,M(0x232a36,.5,.5));
+  bx(scene,1.72,.06,1.72,0.9,-0.85,0,M(0x39414E,.6,.38));
+  bx(scene,1.15,.05,1.15,0.9,-0.815,0,M(0x11251a,.25,.65));     // Sockel-PCB
+  bx(scene,1.02,.08,1.02,0.9,-0.755,0,M(0x123322,.25,.6));      // CPU-Substrat
+  bx(scene,.80,.07,.80,0.9,-0.68,0,silver);                     // IHS
+  const die=planeLabel(.62,.32,'HERO CORE','i9 · 4 Kerne · 5.8 GHz',{bg:'rgba(205,210,220,1)',col:'#1a1d24',sub:'#3a3f4a',border:'rgba(140,146,158,1)',tSize:60});
+  die.rotation.x=-Math.PI/2;die.position.set(0.9,-0.642,0);scene.add(die);
+  // 4 Kern-LEDs (leuchten während der Verarbeitung)
+  coreMats=[];
+  [[-.28,-.28],[.28,-.28],[-.28,.28],[.28,.28]].forEach(p=>{
+    const m=M(0x0f2a2e,.5,.35,{emissive:0x00E5FF,emissiveIntensity:.12});
+    m.userData.keep=true;coreMats.push(m);
+    bx(scene,.12,.03,.12,0.9+p[0],-0.64,p[1],m,true);
+  });
+  // Gold-Pins rundum
+  for(let i=0;i<10;i++){
+    bx(scene,.03,.03,.9,0.42+i*.106,-0.79,0,gold,true);
+  }
+  // Leucht-Ring um das Podest
+  ringMat=M(0x00BCD4,.4,.4,{emissive:0x00E5FF,emissiveIntensity:.8});
+  ringMat.userData.keep=true;rgbMats.push(ringMat);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1.18,.035,12,50),ringMat);
+  ring.rotation.x=Math.PI/2;ring.position.set(0.9,-0.83,0);scene.add(ring);
+  // Holo-Dock über der CPU
+  dockMat=M(0x00BCD4,.2,.5,{emissive:0x00E5FF,emissiveIntensity:.7,transparent:true,opacity:.75});
+  dockMat.userData.keep=true;rgbMats.push(dockMat);
+  dockRing=new THREE.Mesh(new THREE.TorusGeometry(.46,.02,10,40),dockMat);
+  dockRing.rotation.x=Math.PI/2;dockRing.position.copy(DOCK).y-=.28;scene.add(dockRing);
+  // Holo-Beam
+  beamMat=M(0x66e0ff,.1,.6,{transparent:true,opacity:.06,emissive:0x66e0ff,emissiveIntensity:.4,depthWrite:false});
+  beamMat.userData.keep=true;
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(.34,.42,1.55,24,1,true),beamMat);
+  beam.position.set(0.9,0.12,0);scene.add(beam);
+  // CPU-Label
+  const cpuLab=makeSprite('⚙ HERO-CPU','Immer nur EIN Prozess gleichzeitig!',.30);
+  cpuLab.position.set(0.9,1.85,0);scene.add(cpuLab);
+
+  // ── Ready-Queue-Plattform ──
+  bx(scene,1.15,.08,3.5,-2.55,-0.95,0,M(0x232a36,.45,.55));
+  bx(scene,1.15,.02,.05,-2.55,-0.908,1.72,staticGlowM(0x00BCD4,.35),true);
+  bx(scene,1.15,.02,.05,-2.55,-0.908,-1.72,staticGlowM(0x00BCD4,.35),true);
+  [[-3.05,-1.6],[-2.05,-1.6],[-3.05,1.6],[-2.05,1.6]].forEach(p=>bx(scene,.09,.85,.09,p[0],-1.42,p[1],dark));
+  const qLab=makeSprite('📥 READY QUEUE','Wartende Prozesse',.30);
+  qLab.position.set(-2.55,1.15,0);scene.add(qLab);
+
+  // ── Fertig-Plattform ──
+  bx(scene,1.15,.08,1.7,2.55,-1.0,0.5,M(0x1c3324,.45,.55));
+  bx(scene,1.15,.02,.05,2.55,-0.958,1.32,staticGlowM(0x43A047,.4),true);
+  const dLab=makeSprite('✔ FERTIG','Abgearbeitete Prozesse',.26,{col:'#66BB6A',border:'rgba(67,160,71,.8)'});
+  dLab.position.set(2.55,0.35,0.5);scene.add(dLab);
+
+  // ── Gantt-Zeitstrahl ──
+  bx(scene,4.7,.05,.14,-0.45,-1.80,2.15,M(0x39414E,.6,.4));
+  bx(scene,4.7,.015,.02,-0.45,-1.768,2.23,staticGlowM(0x00BCD4,.4),true);
+  const gLab=makeSprite('📊 GANTT-ZEITSTRAHL','Dein Schedule wächst hier!',.24);
+  gLab.position.set(-2.2,-1.35,2.15);scene.add(gLab);
+}
+
+function stackPos(i){
+  const col=i%2,row=Math.floor(i/2);
+  return new THREE.Vector3(2.32+col*.46,-0.86+row*.21,0.5+((row%2)*.08));
+}
+
+function buildProc(r,p){
+  const g=new THREE.Group();
+  bx(g,.52,.30,.52,0,0,0,M(p.color,.35,.5));
+  bx(g,.55,.05,.55,0,.175,0,M(0x14171e,.5,.45));
+  bx(g,.40,.04,.03,0,.05,.265,staticGlowM(p.color,.65));
+  bx(g,.40,.04,.03,0,.05,-.265,staticGlowM(p.color,.65));
+  const gold=M(0xE0B84A,.95,.15);
+  [[-.18,-.18],[.18,-.18],[-.18,.18],[.18,.18]].forEach(q=>cy(g,.03,.07,q[0],-.185,q[1],gold,null,10));
+  const lab=makeSprite(p.emoji+' '+p.name.toUpperCase(),statTxt(r,p),.26);
+  lab.position.set(0,.58,0);
+  g.add(lab);
+  g.userData.label=lab;
+  g.userData.id=p.id;
+  g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+  return g;
+}
+
+// ══════════════════════════════════════════════════════
+// PLAY-PHASE: START
+// ══════════════════════════════════════════════════════
+function startBuild(){
+  roundIdx=0;decided=0;doneCount=0;totalErrors=0;
+  busy=false;overlayOn=false;rgbOn=false;phase='play';
+  ganttCursor=-2.68;
+  showScreen('build-screen');
+  document.getElementById('sel-label').textContent='';
+  initThree();
+  showRoundCard();
+}
+
+function showRoundCard(){
+  const r=ROUNDS[roundIdx];
+  overlayOn=true;
+  document.getElementById('ro-badge').textContent='RUNDE '+(roundIdx+1)+' / '+ROUNDS.length;
+  document.getElementById('ro-icon').textContent=r.icon;
+  document.getElementById('ro-title').textContent=r.title;
+  document.getElementById('ro-text').textContent=r.text;
+  document.getElementById('round-overlay').style.display='flex';
+  document.getElementById('hb-title').textContent='RUNDE '+(roundIdx+1)+'/'+ROUNDS.length+' · '+r.short;
+  tone(520,660,.07,'sine',.3);
+}
+function beginRound(){
+  overlayOn=false;
+  document.getElementById('round-overlay').style.display='none';
+  spawnRound();
+  const r=ROUNDS[roundIdx];
+  document.getElementById('sel-label').textContent='📏 REGEL: '+r.rule;
+  renderSidebar();
+  toast('👉 Welcher Prozess darf zuerst in die CPU?');
+}
+function spawnRound(){
+  const r=ROUNDS[roundIdx];
+  r.procs.sort(()=>Math.random()-.5);                       // Queue durchmischen
+  r.order=[...r.procs].sort((a,b)=>roundKey(r,a)-roundKey(r,b)); // korrekte Reihenfolge
+  r.next=0;
+  const n=r.procs.length,z0=-(n-1)/2*0.66;
+  r.procs.forEach((p,i)=>{
+    p.done=false;
+    const g=buildProc(r,p);
+    g.position.set(-2.55,-0.55,z0+i*0.66);
+    g.rotation.y=0.35;
+    g.userData.baseY=-0.55;
+    g.userData.flying=false;
+    g.scale.setScalar(.01);
+    scene.add(g);
+    procObjs[p.id]=g;
+    setTimeout(()=>{
+      tw({dur:380,ease:easeOut,onU:e=>g.scale.setScalar(.01+.99*e)});
+      tone(300+i*70,420+i*70,.04,'sine',.15);
+    },i*100);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════════════════════
+function renderSidebar(){
+  const r=ROUNDS[Math.min(roundIdx,ROUNDS.length-1)];
+  document.getElementById('sb-title').textContent=r.icon+' '+r.short+' — QUEUE';
+  document.getElementById('comp-list').innerHTML=r.procs.map(p=>{
+    return `<div class="comp-item${p.done?' installed':''}" onclick="selectItem('${p.id}')" id="ci-${p.id}">
+      <div class="ci-icon">${p.emoji}</div>
+      <div class="ci-info"><div class="ci-name">${p.name}</div><div class="ci-desc">${p.done?'✔ Abgearbeitet':statTxt(r,p)}</div></div>
+      ${p.done?'<span style="font-size:14px">✅</span>':''}
+    </div>`;
+  }).join('');
+  document.getElementById('tip-panel').innerHTML=r.tip;
+  document.getElementById('hb-fill').style.width=(33+decided/TOTAL_PROCS*67)+'%';
+  document.getElementById('hb-score').textContent='⭐ '+(qCorrect*100+decided*40);
+}
+function selectItem(id){attempt(id);}
+
+// ══════════════════════════════════════════════════════
+// SCHEDULING-LOGIK
+// ══════════════════════════════════════════════════════
+function attempt(id){
+  if(busy||overlayOn||phase!=='play')return;
+  const r=ROUNDS[roundIdx];
+  const proc=r.procs.find(p=>p.id===id);
+  if(!proc||proc.done)return;
+  const expect=r.order[r.next];
+  if(proc.id===expect.id){runProc(r,proc);return;}
+  // Fehler: erklärendes Feedback zur Regel
+  totalErrors++;errSound();
+  let msg='';
+  if(r.id==='fcfs')msg=`❌ FCFS: ${expect.emoji} ${expect.name} kam früher an (${expect.arr} ms vs. ${proc.arr} ms)!`;
+  else if(r.id==='sjf')msg=`❌ SJF: ${expect.emoji} ${expect.name} ist kürzer (${expect.burst} ms vs. ${proc.burst} ms) — kürzester Job zuerst!`;
+  else msg=`❌ Priorität ${expect.prio} schlägt Priorität ${proc.prio} — ${expect.emoji} ${expect.name} ist wichtiger!`;
+  toast(msg);
+  shake(procObjs[id]);
+  flashRing(procObjs[id].position.clone(),0xE53935);
+}
+
+function ringSetColor(hex){
+  if(ringMat){ringMat.emissive.setHex(hex);ringMat.color.setHex(hex);}
+  if(dockMat){dockMat.emissive.setHex(hex);dockMat.color.setHex(hex);}
+}
+
+function runProc(r,proc){
+  busy=true;
+  const g=procObjs[proc.id];
+  setGlow(g,0x000000,0);
+  tone(240,430,.06,'sine',.5);
+  flyTo(g,DOCK,750,()=>{
+    g.userData.flying=true; // bleibt „in der Luft“ — kein Bobbing der Queue
+    const d=Math.min(1600,500+proc.burst*110);
+    ringSetColor(proc.color);
+    noiseWhoosh(d/1000,.05);
+    tone(90,300,.05,'sawtooth',d/1000);
+    tw({dur:d,ease:t=>t,onU:(e,k)=>{
+      g.rotation.y=k*Math.PI*5;
+      g.position.y=DOCK.y+Math.sin(k*Math.PI*6)*.04;
+      for(let i=0;i<coreMats.length;i++)coreMats[i].emissiveIntensity=(k*4>i)?.95:.12;
+    },onC:()=>{
+      sparks(DOCK,proc.color,14);
+      flashRing(DOCK,proc.color);
+      snapSound();
+      addGantt(proc);
+      for(let i=0;i<coreMats.length;i++)coreMats[i].emissiveIntensity=.12;
+      ringSetColor(0x00E5FF);
+      if(g.userData.label)g.userData.label.visible=false;
+      const sp=stackPos(doneCount);
+      const p0=g.position.clone();
+      tw({dur:520,ease:easeIO,onU:e=>{
+        g.position.lerpVectors(p0,sp,e);
+        g.scale.setScalar(1-.55*e);
+      },onC:()=>{
+        g.position.copy(sp);
+        proc.done=true;doneCount++;decided++;r.next++;
+        renderSidebar();
+        busy=false;
+        if(r.next>=r.procs.length)roundComplete();
+        else toast('✅ Richtig! Und wer jetzt?');
+      }});
+    }});
+  });
+}
+
+function addGantt(p){
+  const w=p.burst*GS;
+  const m=M(p.color,.3,.5,{emissive:p.color,emissiveIntensity:.35});
+  m.userData.keep=true;rgbMats.push(m);
+  const b=new THREE.Mesh(new THREE.BoxGeometry(w,.24,.18),m);
+  b.castShadow=true;
+  b.position.set(ganttCursor+w/2,-1.64,2.15);
+  b.scale.x=.01;
+  scene.add(b);
+  const x0=ganttCursor;
+  tw({dur:420,ease:easeOut,onU:e=>{b.scale.x=Math.max(.01,e);b.position.x=x0+w*e/2;}});
+  ganttCursor+=w+GGAP;
+}
+
+function roundComplete(){
+  toast('🎉 RUNDE '+(roundIdx+1)+' GESCHAFFT!');
+  tone(523,659,.09,'sine',.4);
+  setTimeout(()=>tone(659,784,.09,'sine',.4),150);
+  setTimeout(()=>{
+    roundIdx++;
+    if(roundIdx<ROUNDS.length)showRoundCard();
+    else finale();
+  },1000);
+}
+
+// ══════════════════════════════════════════════════════
+// TURBO-FINALE
+// ══════════════════════════════════════════════════════
+function finale(){
+  phase='finale';
+  document.getElementById('hb-title').textContent='TURBO-FINALE';
+  document.getElementById('sel-label').textContent='';
+  document.getElementById('hb-fill').style.width='100%';
+  toast('🚀 ALLE PROZESSE GEPLANT — CPU IM TURBO-MODUS!');
+  rgbOn=true;
+  noiseWhoosh(1.6,.09);
+  setTimeout(()=>{tone(392,392,.09,'sine',.8);tone(523,523,.09,'sine',.8);tone(659,659,.09,'sine',.8);},300);
+  const cols=[0xFFD600,0x00E5FF,0xFF4081];
+  [0,260,520].forEach((del,i)=>setTimeout(()=>sparks(new THREE.Vector3(0.9,-0.2+i*.4,0),cols[i],22),400+del));
+  setTimeout(()=>tone(1046,1046,.12,'square',.14),1300);
+  setTimeout(showWin,2600);
+}
+
+// ══════════════════════════════════════════════════════
+// THREE INIT + LOOP
+// ══════════════════════════════════════════════════════
+function initThree(){
+  if(raf){cancelAnimationFrame(raf);raf=null;}
+  procObjs={};coreMats=[];rgbMats.length=0;
+  ringMat=null;dockMat=null;dockRing=null;beamMat=null;simT=0;
+
+  const wrap=document.querySelector('#build-screen .canvas-wrap');
+  const canvas=document.getElementById('three-canvas');
+  const W=wrap.clientWidth||800,H=wrap.clientHeight||500;
+
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x0c111c);
+  scene.fog=new THREE.Fog(0x0c111c,16,34);
+
+  camera=new THREE.PerspectiveCamera(45,W/H,0.1,80);
+  updateCam();
+
+  renderer3=new THREE.WebGLRenderer({canvas:canvas,antialias:true});
+  renderer3.setSize(W,H);
+  renderer3.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer3.shadowMap.enabled=true;
+  renderer3.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer3.outputEncoding=THREE.sRGBEncoding;
+  renderer3.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer3.toneMappingExposure=1.05;
+
+  scene.add(new THREE.HemisphereLight(0xbfd8ff,0x141020,.55));
+  const sun=new THREE.DirectionalLight(0xffffff,.95);
+  sun.position.set(5,7,4);sun.castShadow=true;
+  sun.shadow.mapSize.set(1024,1024);
+  sun.shadow.camera.left=-6;sun.shadow.camera.right=6;
+  sun.shadow.camera.top=6;sun.shadow.camera.bottom=-6;
+  scene.add(sun);
+  const fill=new THREE.DirectionalLight(0x88bbff,.35);
+  fill.position.set(-6,3,-3);scene.add(fill);
+  const rim=new THREE.DirectionalLight(0xffd600,.22);
+  rim.position.set(-3,2,-6);scene.add(rim);
+  const inner=new THREE.PointLight(0x66e0ff,.6,7);
+  inner.position.set(0.9,0.6,0);scene.add(inner);
+
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(10,40),M(0x0c1220,.3,.8));
+  floor.rotation.x=-Math.PI/2;floor.position.y=-1.87;floor.receiveShadow=true;scene.add(floor);
+  const grid=new THREE.GridHelper(20,26,0x1a2a3a,0x111a24);
+  grid.position.y=-1.86;scene.add(grid);
+
+  buildScene();
+  bindEvents();
+
+  lastT=performance.now();
+  raf=requestAnimationFrame(loop);
+}
+
+function updateCam(){
+  camera.position.set(
+    camTarget.x+orb.r*Math.cos(orb.p)*Math.sin(orb.t),
+    camTarget.y+orb.r*Math.sin(orb.p),
+    camTarget.z+orb.r*Math.cos(orb.p)*Math.cos(orb.t)
+  );
+  camera.lookAt(camTarget);
+}
+
+let dragOn=false,lastX=0,lastY=0,downX=0,downY=0,pinchD=0;
+function bindEvents(){
+  if(evBound)return;evBound=true;
+  const cv=document.getElementById('three-canvas');
+  cv.addEventListener('mousedown',e=>{dragOn=true;lastX=downX=e.clientX;lastY=downY=e.clientY;});
+  window.addEventListener('mousemove',e=>{
+    if(!dragOn)return;
+    orb.t-=(e.clientX-lastX)*.005;
+    orb.p=Math.max(-.06,Math.min(1.22,orb.p+(e.clientY-lastY)*.005));
+    lastX=e.clientX;lastY=e.clientY;updateCam();
+  });
+  window.addEventListener('mouseup',e=>{
+    if(!dragOn)return;dragOn=false;
+    if(Math.hypot(e.clientX-downX,e.clientY-downY)<8)click3D(e.clientX,e.clientY);
+  });
+  cv.addEventListener('wheel',e=>{
+    e.preventDefault();
+    orb.r=Math.max(4.2,Math.min(13,orb.r*(1+e.deltaY*.0011)));
+    updateCam();
+  },{passive:false});
+  cv.addEventListener('touchstart',e=>{
+    if(e.touches.length===2){
+      pinchD=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    }else{
+      const t=e.touches[0];
+      dragOn=true;lastX=downX=t.clientX;lastY=downY=t.clientY;
+    }
+  },{passive:true});
+  cv.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    if(e.touches.length===2){
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      if(pinchD)orb.r=Math.max(4.2,Math.min(13,orb.r*(pinchD/d)));
+      pinchD=d;updateCam();
+    }else if(dragOn){
+      const t=e.touches[0];
+      orb.t-=(t.clientX-lastX)*.006;
+      orb.p=Math.max(-.06,Math.min(1.22,orb.p+(t.clientY-lastY)*.006));
+      lastX=t.clientX;lastY=t.clientY;updateCam();
+    }
+  },{passive:false});
+  cv.addEventListener('touchend',e=>{
+    if(e.touches.length>0){pinchD=0;return;}
+    if(!dragOn)return;dragOn=false;
+    const t=e.changedTouches[0];
+    if(Math.hypot(t.clientX-downX,t.clientY-downY)<12)click3D(t.clientX,t.clientY);
+  });
+  window.addEventListener('resize',onResize);
+}
+function onResize(){
+  if(!renderer3||!camera)return;
+  const wrap=document.querySelector('#build-screen .canvas-wrap');
+  if(!wrap)return;
+  const W=wrap.clientWidth,H=wrap.clientHeight;
+  if(W<10||H<10)return;
+  renderer3.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();
+}
+
+function raycast(cx,cy,objs){
+  const cv=document.getElementById('three-canvas');
+  const r=cv.getBoundingClientRect();
+  _m2.set(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1);
+  _ray.setFromCamera(_m2,camera);
+  return _ray.intersectObjects(objs,false);
+}
+function click3D(cx,cy){
+  if(busy||overlayOn||!scene||phase!=='play')return;
+  if(roundIdx>=ROUNDS.length)return;
+  const meshes=[],map=new Map();
+  ROUNDS[roundIdx].procs.forEach(p=>{
+    if(p.done)return;
+    const g=procObjs[p.id];
+    if(!g||g.userData.flying)return;
+    g.traverse(o=>{if(o.isMesh){meshes.push(o);map.set(o,p.id);}});
+  });
+  const h=raycast(cx,cy,meshes);
+  if(h.length)attempt(map.get(h[0].object));
+}
+
+function loop(now){
+  raf=requestAnimationFrame(loop);
+  const dt=Math.min(50,now-lastT);lastT=now;simT+=dt/1000;
+  stepTweens(dt);
+  // Wartende Prozesse schweben
+  if(roundIdx<ROUNDS.length){
+    ROUNDS[roundIdx].procs.forEach((p,i)=>{
+      const g=procObjs[p.id];
+      if(g&&!p.done&&!g.userData.flying)
+        g.position.y=g.userData.baseY+Math.sin(simT*1.6+i*1.3)*.035;
+    });
+  }
+  // Holo-Dock pulsiert & dreht
+  if(dockRing){
+    dockRing.rotation.z+=dt*.0009;
+    const s=1+.05*Math.sin(simT*3.2);
+    dockRing.scale.set(s,s,1);
+  }
+  if(beamMat)beamMat.opacity=.05+.025*Math.sin(simT*2.4);
+  if(!rgbOn&&ringMat)ringMat.emissiveIntensity=.65+.3*Math.sin(simT*2.2);
+  // Finale: RGB-Zyklus über Ring, Dock & Gantt-Blöcke
+  if(rgbOn){
+    const hue=(simT*.12)%1;
+    rgbMats.forEach((m,i)=>{
+      const h=(hue+i*.07)%1;
+      m.emissive.setHSL(h,1,.55);
+      if(m.color)m.color.setHSL(h,.9,.5);
+      m.emissiveIntensity=1.1;
+    });
+  }
+  renderer3.render(scene,camera);
+}
+
+// ══════════════════════════════════════════════════════
+// WIN
+// ══════════════════════════════════════════════════════
+function showWin(){
+  const bonus=totalErrors===0?200:totalErrors<=3?100:0;
+  const pts=qCorrect*100+decided*40+bonus;
+  const stars=pts>=1000?3:pts>=700?2:1;
+  document.getElementById('w-pts').textContent=pts;
+  document.getElementById('w-cor').textContent=qCorrect+'/'+quizPool.length;
+  document.getElementById('w-err').textContent=totalErrors;
+  document.getElementById('hw-score').textContent='⭐ '+pts;
+  document.getElementById('wb-q').textContent='+'+qCorrect*100;
+  document.getElementById('wb-p').textContent='+'+decided*40;
+  document.getElementById('wb-b').textContent=bonus>0?'+'+bonus+' Punkte':'0 Punkte';
+  document.getElementById('wb-b').className=bonus>0?'ok':'nok';
+  for(let i=0;i<3;i++){
+    document.getElementById('rs'+i).classList.remove('lit');
+    if(i<stars)setTimeout(()=>document.getElementById('rs'+i).classList.add('lit'),300+i*200);
+  }
+  showScreen('win-screen');
+  window.parent.postMessage({type:'levelComplete',level:5,score:pts,stars:stars},'*');
+}
+
+// ══════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════
+let toastT;
+function toast(msg){
+  const el=document.getElementById('build-toast');
+  el.textContent=msg;el.classList.add('on');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>el.classList.remove('on'),3200);
+}
+</script>
+</body>
+</html>
