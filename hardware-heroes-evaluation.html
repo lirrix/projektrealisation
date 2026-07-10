@@ -879,10 +879,10 @@ const questions = [
   },
   {
     id: 'q5',
-    text: 'Welcher Anschlusstyp wird typischerweise für schnelle Datenverbindungen zwischen Mainboard und GPU genutzt?',
-    options: ['USB', 'PCIe (PCI Express)', 'HDMI', 'SATA'],
+    text: 'Welche CPU-Scheduling-Strategie kann zu „Verhungern" (Starvation) einzelner Prozesse führen?',
+    options: ['First-Come-First-Served (FCFS)', 'Round Robin (RR)', 'Priority Scheduling', 'Alle Prozesse werden immer gleich behandelt, Starvation ist unmöglich'],
     correct: 1,
-    explanation: 'PCIe (PCI Express) ist das schnelle Erweiterungsinterface auf dem Mainboard, über das die GPU und andere Karten angeschlossen werden. SATA wird für Festplatten genutzt, USB für externe Geräte.'
+    explanation: 'Priority Scheduling'
   },
   {
     id: 'q6',
@@ -893,15 +893,15 @@ const questions = [
   },
   {
     id: 'q7',
-    text: 'Was beschreibt den Begriff "Takt" (Taktfrequenz) bei einer CPU?',
+    text: 'Welches Kabel verbindet das Netzteil mit dem Mainboard zur Hauptstromversorgung?',
     options: [
-      'Die Anzahl der Kerne des Prozessors',
-      'Die Menge des integrierten Cache-Speichers',
-      'Die Anzahl der Berechnungszyklen pro Sekunde',
-      'Die Temperatur des Prozessors unter Last'
+      'SATA-Datenkabel',
+      '24-Pin-ATX-Stromkabel',
+      'HDMI-Kabel',
+      'USB-Header-Kabel'
     ],
     correct: 2,
-    explanation: 'Der Takt (in Hz, meist GHz) gibt an, wie viele Berechnungszyklen die CPU pro Sekunde durchführen kann. Ein höherer Takt bedeutet grundsätzlich mehr Leistung (bei gleicher Architektur).'
+    explanation: '24-Pin-ATX-Stromkabel'
   },
   {
     id: 'q8',
